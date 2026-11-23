@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Cross-platform (macOS + Linux) symlink manager for all Antigravity skills in this repository.
 
-Auto-discovers every top-level `<repo_root>/<skill-name>/` directory containing a
-`SKILL.md` file and symlinks it into `~/.gemini/config/skills/<skill-name>` so
-Antigravity CLI (`agy`), IDE, and Desktop App discover all skills automatically.
+Auto-discovers every skill directory containing a `SKILL.md` file—both top-level
+`<repo_root>/<skill-name>/SKILL.md` and grouped project packages under
+`<repo_root>/<project>/skills/<skill-name>/SKILL.md`—and symlinks each into
+`~/.gemini/config/skills/<skill-name>` so Antigravity CLI (`agy`), IDE, and
+Desktop App discover all skills automatically.
 """
 
 from __future__ import annotations
@@ -22,14 +24,36 @@ def default_target_skills_dir() -> Path:
 
 
 def discover_skills(root: Path) -> list[Path]:
-    """Return sorted top-level skill directories containing a SKILL.md file."""
+    """Return sorted skill directories containing a SKILL.md file.
+
+    Supports both top-level `<repo>/<skill>/SKILL.md` and grouped project
+    packages `<repo>/<project>/skills/<skill>/SKILL.md`.
+    """
     skills: list[Path] = []
+    seen_names: dict[str, Path] = {}
+
+    def _register(candidate: Path) -> None:
+        if not (candidate / "SKILL.md").is_file():
+            return
+        if candidate.name in seen_names:
+            raise ValueError(
+                f"Duplicate skill name '{candidate.name}' found at "
+                f"{seen_names[candidate.name]} and {candidate}"
+            )
+        seen_names[candidate.name] = candidate
+        skills.append(candidate)
+
     for child in sorted(root.iterdir()):
         if not child.is_dir() or child.name.startswith("."):
             continue
         if (child / "SKILL.md").is_file():
-            skills.append(child)
-    return skills
+            _register(child)
+        nested_skills_dir = child / "skills"
+        if nested_skills_dir.is_dir():
+            for nested in sorted(nested_skills_dir.iterdir()):
+                if nested.is_dir() and not nested.name.startswith("."):
+                    _register(nested)
+    return sorted(skills, key=lambda p: p.name)
 
 
 def resolve_selected_skills(root: Path, requested: list[str]) -> tuple[list[Path], list[str]]:
