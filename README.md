@@ -1,48 +1,52 @@
-# Antigravity Skills & ADK Agents Repository
+# AI Engineering Agents & Skills Repository
 
-Monorepo housing custom Antigravity skills and Google ADK agents, supporting scripts, references, implementation plans, and tests.
+Monorepo housing Google ADK agents under `agents/` and reusable Antigravity / ADK skills under `skills/`.
 
 ## Repository Layout
 
-`scripts/install_skill.py` auto-discovers skills in either layout:
-- **Standalone skill:** `<repo-root>/<skill-name>/SKILL.md`
-- **Grouped project package:** `<repo-root>/<project>/skills/<skill-name>/SKILL.md`
-
 ```text
 <repo-root>/
-├── scripts/
-│   └── install_skill.py                            # Cross-platform symlink installer for Antigravity skills
-├── obsidian-note-generator/                        # Google ADK URL-driven Obsidian Note Agent + unified skill
-│   ├── README.md                                   # Architecture, adk web/run & CLI quick start
-│   ├── pyproject.toml                              # obsidian-note-agent (google-adk + fetchers)
-│   ├── skills/
-│   │   └── obsidian-note-generator/                # Single unified skill (ADK SkillToolset + Antigravity)
-│   │       ├── SKILL.md
-│   │       ├── references/vault_conventions.md     # Concise composable tags, create & update-draft schemas
-│   │       ├── references/exemplars.md
-│   │       └── scripts/validate_note.py
-│   ├── src/obsidian_note_agent/                    # ADK root_agent, fetchers, vault indexer, guarded tools, CLI
-│   ├── docs/
-│   ├── plans/
-│   └── tests/
+├── agents/
+│   └── obsidian-note-generator/               # Google ADK URL-driven Obsidian Note Agent
+│       ├── README.md                          # Architecture, sequence/ER diagrams, file reference & quick start
+│       ├── pyproject.toml                     # obsidian-note-agent (google-adk + fetchers)
+│       ├── .env.example                       # Gemini Developer API or Vertex AI auth
+│       ├── config.example.yaml                # Vault path, model, fallbacks, retry policy, token caps
+│       ├── src/obsidian_note_agent/           # ADK root_agent, ResilientGemini, fetchers, vault tools, CLI
+│       ├── docs/
+│       ├── plans/
+│       └── tests/
+├── skills/
+│   ├── install_skills.py                      # Cross-platform symlink installer for all skills under skills/
+│   └── obsidian-note-generator/               # Unified skill (ADK SkillToolset + Antigravity)
+│       ├── SKILL.md
+│       ├── references/vault_conventions.md    # Concise composable tags, create & update-draft schemas
+│       ├── references/exemplars.md
+│       └── scripts/validate_note.py
 └── README.md
 ```
 
-## Available Skills & Agents
+## Available Agents & Skills
 
-| Package / Skill | Input | Docs | Description |
+| Type | Name | Docs | Description |
 | :--- | :--- | :--- | :--- |
-| [obsidian-note-generator](./obsidian-note-generator/skills/obsidian-note-generator/SKILL.md) | YouTube URLs, engineering article/blog URLs, technical/product documentation URLs, or pasted text | [README](./obsidian-note-generator/README.md) | Google ADK agent (`adk web`, `adk run`, `obsidian-note`) + portable Antigravity skill that produces Mastery Framework Obsidian notes or staged Update Drafts (`<Existing> (Update).md`) with concise composable tags. |
+| **Agent** | [obsidian-note-generator](./agents/obsidian-note-generator/README.md) | [README](./agents/obsidian-note-generator/README.md) | Google ADK agent (`adk web`, `adk run`, `obsidian-note`) that turns YouTube, engineering article, and technical documentation URLs into Mastery Framework Obsidian notes or staged Update Drafts (`<Existing> (Update).md`). |
+| **Skill** | [obsidian-note-generator](./skills/obsidian-note-generator/SKILL.md) | [vault_conventions.md](./skills/obsidian-note-generator/references/vault_conventions.md) | Portable skill playbook + stdlib validator shared by the ADK agent (`SkillToolset`) and Antigravity (`~/.gemini/config/skills/`). |
 
 ## Installing Antigravity Skill Symlinks (macOS & Linux)
 
 ```bash
 # List discovered skills and install status
-python3 scripts/install_skill.py --list
+python3 skills/install_skills.py --list
 
-# Install all skills into ~/.gemini/config/skills/
-python3 scripts/install_skill.py --force
+# Install all skills under skills/ into ~/.gemini/config/skills/
+python3 skills/install_skills.py --force
 
 # Verify installed symlinks
-python3 scripts/install_skill.py --check
+python3 skills/install_skills.py --check
 ```
+
+## Adding a New Skill or Agent
+
+- **New skill:** Create `skills/<skill-name>/SKILL.md` (plus optional `references/`, `scripts/`, `assets/`), then run `python3 skills/install_skills.py --force`.
+- **New agent:** Create `agents/<agent-name>/` with its own `pyproject.toml` and ADK package, loading any shared skills from `skills/<skill-name>/`.

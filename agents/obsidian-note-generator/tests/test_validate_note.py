@@ -9,7 +9,7 @@ from pathlib import Path
 
 def _load_validator():
     script_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / "skills"
         / "obsidian-note-generator"
         / "scripts"
@@ -130,15 +130,15 @@ In this article, we cover MCP.
 
 
 def test_install_skill_discovers_consolidated_skill() -> None:
-    repo_root = Path(__file__).resolve().parents[2]
-    installer_path = repo_root / "scripts" / "install_skill.py"
-    spec = importlib.util.spec_from_file_location("repo_install_skill", installer_path)
+    repo_root = Path(__file__).resolve().parents[3]
+    installer_path = repo_root / "skills" / "install_skills.py"
+    spec = importlib.util.spec_from_file_location("repo_install_skills", installer_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    sys.modules["repo_install_skill"] = module
+    sys.modules["repo_install_skills"] = module
     spec.loader.exec_module(module)
 
-    discovered = {p.name: p for p in module.discover_skills(repo_root)}
+    discovered = {p.name: p for p in module.discover_skills(repo_root / "skills")}
     assert "obsidian-note-generator" in discovered
     assert "obsidian-youtube-note" not in discovered
     assert "obsidian-article-note" not in discovered

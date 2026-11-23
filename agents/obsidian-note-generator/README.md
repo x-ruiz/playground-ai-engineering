@@ -10,7 +10,7 @@ Zero browser extensions and zero background filesystem watchers required.
 
 - **One Agent, Any Technical URL:** Paste a YouTube link (`https://www.youtube.com/watch?v=...`), engineering blog (`https://www.databricks.com/blog/ai-harness`), or documentation page (`https://cloud.google.com/products/managed-service-for-apache-spark`) — or a batch of URLs — into `adk web`, `adk run`, or `obsidian-note generate`.
 - **Automatic Overlap Detection & Update Drafts:** Scans **both** production vault notes and unpromoted `staging/` notes. When a new URL substantially overlaps an existing note, the agent drafts **only net-new additions** into `staging/<Category>/<Existing Note> (Update).md` with `note-action: update`, `target-note`, and `target-path` so you know exactly which note to merge into — never mutating existing notes directly.
-- **Concise, Composable Tags:** Injects your live vault tag tree so the agent extends existing 2–3 level branches (`ai-engineering/agents/mcp`, `data-processing/frameworks/spark`) instead of inventing verbose or duplicate tags. Enforced deterministically by [validate_note.py](./skills/obsidian-note-generator/scripts/validate_note.py).
+- **Concise, Composable Tags:** Injects your live vault tag tree so the agent extends existing 2–3 level branches (`ai-engineering/agents/mcp`, `data-processing/frameworks/spark`) instead of inventing verbose or duplicate tags. Enforced deterministically by [validate_note.py](../../skills/obsidian-note-generator/scripts/validate_note.py).
 - **Token-Efficient Design:**
   - Consolidated **1 lean unified skill** loaded via ADK `SkillToolset` (no 3-skill routing overhead or duplicated docs).
   - **2-turn normal execution** via compound `ingest_url()` (returns cleaned content + provenance + live tags + vault inventory + overlap hints in a single tool call).
@@ -181,7 +181,9 @@ erDiagram
 | [__init__.py](./src/obsidian_note_agent/__init__.py) | Package entrypoint exposing `root_agent` and `build_agent` for `adk web` / `adk run` auto-discovery. |
 | [agent.py](./src/obsidian_note_agent/agent.py) | Builds the ADK `LlmAgent` (`root_agent`, default `gemini-2.5-flash` via `ResilientGemini`), wires the unified skill via `SkillToolset(skills=[load_skill_from_dir(...)])`, binds the 5 deterministic function tools, and holds the compact static system instruction. |
 | [models.py](./src/obsidian_note_agent/models.py) | `ResilientGemini` subclass of ADK `Gemini` adding configurable exponential backoff (`HttpRetryOptions`) and ordered `fallback_models` failover on transient `429`/`500`/`503`/`504` (`UNAVAILABLE` / `RESOURCE_EXHAUSTED`) errors. |
-| [cli.py](./src/obsidian_note_agent/cli.py) | Thin CLI (`obsidian-note`) built on ADK `InMemoryRunner` providing `generate <url...>` (with `--dry-run`, `--output-dir`, `--force`, `--model`), `validate-config`, and `history`. |
+| [cli.py](./src/obsidian_note_agent/cli.py) | Thin CLI (`obsidian-note`) providing `generate <url...>` (with `--dry-run`, `--output-dir`, `--force`, `--model`), `validate-config`, `history`, and `mcp-config` (prints client snippets for `agy`, Claude, Cursor, and Codex). |
+| [runner.py](./src/obsidian_note_agent/runner.py) | Shared async ADK runner helpers (`run_urls_async`, `run_pasted_text_async`) reused by both `cli.py` and `mcp_server.py`. |
+| [mcp_server.py](./src/obsidian_note_agent/mcp_server.py) | Cross-client `FastMCP` server (`obsidian-note-mcp`, `stdio` + `streamable-http`) wrapping the ADK agent behind 3 thin tools (`generate_note_from_url`, `generate_note_from_text`, `list_recent_notes`) with stderr-only logging and `cwd="/"` safety. |
 | [config.py](./src/obsidian_note_agent/config.py) | Pydantic configuration (`AppConfig`: `vault`, `state`, `agent`, `ingestion`), `.env` loader (`load_dotenv`), `config.yaml` discovery, skill directory resolution, and runtime environment checks (`validate_runtime_environment`). |
 | [state.py](./src/obsidian_note_agent/state.py) | SQLite WAL ledger (`note_runs` table) providing pre-LLM deduplication by `canonical_url` and `content_sha256`, plus run history tracking for both `create` and `update` actions. |
 
@@ -201,14 +203,14 @@ erDiagram
 | [ingest_tools.py](./src/obsidian_note_agent/tools/ingest_tools.py) | Implements the compound `ingest_url()` and `ingest_pasted_text()` tools (returning cleaned content + provenance + live tags + vault inventory + overlap hints in 1 call to minimize agent turns) and `list_recent_notes()`. |
 | [vault_tools.py](./src/obsidian_note_agent/tools/vault_tools.py) | Implements read-only `read_vault_note()` (path-contained inside `vault_path`, 16k-char cap) and guarded `stage_obsidian_note()` (validates category, blocks path traversal, auto-appends ` (Update)` on update drafts, writes strictly inside `staging/<Category>/`, runs `validate_note.py --strict-warnings` inline, unlinks invalid drafts on failure, and records valid runs in SQLite). |
 
-### Unified Skill & Deterministic Validator (`skills/obsidian-note-generator/`)
+### Unified Skill & Deterministic Validator (`../../skills/obsidian-note-generator/`)
 
 | File | Role & Responsibilities |
 | :--- | :--- |
-| [SKILL.md](./skills/obsidian-note-generator/SKILL.md) | Single lean skill playbook loaded by ADK `SkillToolset` (and optionally symlinked to `~/.gemini/config/skills/` for Antigravity). Defines the 3 source profiles, `create` vs. `update` decision logic, tag reuse rules, and validation loop. |
-| [vault_conventions.md](./skills/obsidian-note-generator/references/vault_conventions.md) | Authoritative spec for the 6 Mastery Framework categories, concise 2–3 level composable tag taxonomy, `create` and `update` frontmatter schemas, evergreen voice, wikilinks, and hygiene ban list. |
-| [exemplars.md](./skills/obsidian-note-generator/references/exemplars.md) | Compact style templates for a new note (`create`) and a staged Update Draft (`update`). |
-| [validate_note.py](./skills/obsidian-note-generator/scripts/validate_note.py) | Standalone stdlib validator enforcing category folders, YAML frontmatter, `source-type`, `note-action` (`target-note`, `target-path`, ` (Update).md`), tag depth (2–3 levels), conciseness (`-and-` / >22-char segment warnings), no redundant parent+child tags, no duplicate H1, and Markdown hygiene. |
+| [SKILL.md](../../skills/obsidian-note-generator/SKILL.md) | Single lean skill playbook loaded by ADK `SkillToolset` (and optionally symlinked to `~/.gemini/config/skills/` for Antigravity). Defines the 3 source profiles, `create` vs. `update` decision logic, tag reuse rules, and validation loop. |
+| [vault_conventions.md](../../skills/obsidian-note-generator/references/vault_conventions.md) | Authoritative spec for the 6 Mastery Framework categories, concise 2–3 level composable tag taxonomy, `create` and `update` frontmatter schemas, evergreen voice, wikilinks, and hygiene ban list. |
+| [exemplars.md](../../skills/obsidian-note-generator/references/exemplars.md) | Compact style templates for a new note (`create`) and a staged Update Draft (`update`). |
+| [validate_note.py](../../skills/obsidian-note-generator/scripts/validate_note.py) | Standalone stdlib validator enforcing category folders, YAML frontmatter, `source-type`, `note-action` (`target-note`, `target-path`, ` (Update).md`), tag depth (2–3 levels), conciseness (`-and-` / >22-char segment warnings), no redundant parent+child tags, no duplicate H1, and Markdown hygiene. |
 
 ### Configuration, Tests & Design History
 
@@ -225,7 +227,7 @@ erDiagram
 ## 6. Quick Start
 
 ### 1. Set Up Environment (`uv`) & Credentials
-From `obsidian-note-generator/`:
+From `agents/obsidian-note-generator/`:
 
 ```bash
 uv sync --no-editable
@@ -269,10 +271,25 @@ obsidian-note history
 
 *(Tip: Without activating `.venv`, prefix commands with `.venv/bin/` or `uv run --no-sync`, or install globally via `uv tool install .`.)*
 
-### 4. Optional: Install Antigravity Skill Symlink
+### 4. Use via MCP (`agy` CLI, Antigravity Desktop, Claude Code, Cursor, Codex)
+Expose your ADK agent as a 3-tool MCP server (`generate_note_from_url`, `generate_note_from_text`, `list_recent_notes`) so any MCP client delegates note synthesis in a single call without dumping raw transcripts into your main chat context:
+
+```bash
+# Print ready-to-paste config snippets with your resolved local binary path
+obsidian-note mcp-config --client agy
+obsidian-note mcp-config --client claude
+obsidian-note mcp-config --client claude-desktop
+obsidian-note mcp-config --client cursor
+obsidian-note mcp-config --client codex
+
+# Optional: run over Streamable HTTP instead of stdio (localhost only)
+obsidian-note-mcp --transport streamable-http --host 127.0.0.1 --port 8765
+```
+
+### 5. Optional: Install Antigravity Skill Symlink
 To also use the exact same unified skill directly inside Antigravity chat, run from the repository root:
 
 ```bash
-python3 scripts/install_skill.py --force
-python3 scripts/install_skill.py --check
+python3 skills/install_skills.py --force
+python3 skills/install_skills.py --check
 ```

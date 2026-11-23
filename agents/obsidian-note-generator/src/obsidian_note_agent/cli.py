@@ -4,67 +4,20 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 from pathlib import Path
 
-from google.adk.runners import InMemoryRunner
-from google.genai import types
-
 from obsidian_note_agent import __version__
-from obsidian_note_agent.agent import build_agent
-from obsidian_note_agent.config import load_config, validate_runtime_environment
+from obsidian_note_agent.config import load_config, project_root, validate_runtime_environment
+from obsidian_note_agent.runner import run_urls_async
 from obsidian_note_agent.state import StateStore
-
-
-async def _run_urls_async(
-    urls: list[str],
-    *,
-    config_path: Path | None,
-    dry_run: bool,
-    output_dir: Path | None,
-    force: bool,
-    model: str | None,
-) -> str:
-    config, _ = load_config(config_path)
-    agent = build_agent(
-        config,
-        dry_run=dry_run,
-        output_dir=output_dir,
-        force=force,
-        model_override=model,
-    )
-    runner = InMemoryRunner(agent=agent, app_name="obsidian_note_agent")
-    session = await runner.session_service.create_session(
-        app_name="obsidian_note_agent",
-        user_id="cli-user",
-    )
-
-    url_lines = "\n".join(f"- {u}" for u in urls)
-    force_clause = " Force regeneration even if already processed." if force else ""
-    prompt = (
-        f"Generate staged Obsidian note(s) or Update Draft(s) for the following URL(s):{force_clause}\n"
-        f"{url_lines}"
-    )
-
-    final_chunks: list[str] = []
-    async for event in runner.run_async(
-        user_id="cli-user",
-        session_id=session.id,
-        new_message=types.Content(role="user", parts=[types.Part.from_text(text=prompt)]),
-    ):
-        if event.is_final_response() and event.content and event.content.parts:
-            for part in event.content.parts:
-                if getattr(part, "text", None):
-                    final_chunks.append(part.text)
-
-    await runner.close()
-    return "\n".join(final_chunks).strip()
 
 
 def _cmd_generate(args: argparse.Namespace) -> int:
     try:
         output = asyncio.run(
-            _run_urls_async(
+            run_urls_async(
                 args.urls,
                 config_path=args.config,
                 dry_run=args.dry_run,
@@ -126,6 +79,51 @@ def _cmd_history(args: argparse.Namespace) -> int:
     return 0
 
 
+def _resolve_mcp_command() -> str:
+    venv_bin = project_root() / ".venv" / "bin" / "obsidian-note-mcp"
+    if venv_bin.exists():
+        return str(venv_bin.resolve())
+    return str(Path(sys.executable).resolve().parent / "obsidian-note-mcp")
+
+
+def _cmd_mcp_config(args: argparse.Namespace) -> int:
+    cmd_path = _resolve_mcp_command()
+    mcp_args: list[str] = []
+    if args.config is not None:
+        mcp_args.extend(["--config", str(args.config.expanduser().resolve())])
+
+    client = args.client
+    if client in ("agy", "claude-desktop", "cursor"):
+        entry: dict[str, object] = {"command": cmd_path}
+        if mcp_args:
+            entry["args"] = mcp_args
+        payload = {"mcpServers": {"obsidian-note-generator": entry}}
+        target_hint = {
+            "agy": "~/.gemini/config/mcp_config.json",
+            "claude-desktop": "~/Library/Application Support/Claude/claude_desktop_config.json",
+            "cursor": "~/.cursor/mcp.json",
+        }[client]
+        print(f"# Add under {target_hint}:")
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    if client == "claude":
+        extra = f" {' '.join(mcp_args)}" if mcp_args else ""
+        print(f"claude mcp add obsidian-note-generator -- {cmd_path}{extra}")
+        return 0
+
+    if client == "codex":
+        args_toml = json.dumps(mcp_args)
+        print("# Add to ~/.codex/config.toml:")
+        print("[mcp_servers.obsidian-note-generator]")
+        print(f'command = "{cmd_path}"')
+        if mcp_args:
+            print(f"args = {args_toml}")
+        return 0
+
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="obsidian-note",
@@ -151,6 +149,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_hist.add_argument("--config", type=Path, default=None, help="Path to config.yaml.")
     p_hist.add_argument("--limit", type=int, default=20, help="Number of recent entries to display.")
     p_hist.set_defaults(func=_cmd_history)
+
+    p_mcp = sub.add_parser(
+        "mcp-config",
+        help="Print ready-to-paste MCP registration snippet for agy, Claude, Cursor, or Codex.",
+    )
+    p_mcp.add_argument(
+        "--client",
+        choices=("agy", "claude", "claude-desktop", "cursor", "codex"),
+        default="agy",
+        help="Target MCP client format (default: agy).",
+    )
+    p_mcp.add_argument("--config", type=Path, default=None, help="Optional explicit config.yaml path.")
+    p_mcp.set_defaults(func=_cmd_mcp_config)
 
     return parser
 

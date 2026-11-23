@@ -3,7 +3,7 @@
 
 vault:
   # Relative paths resolve against the directory containing this config file.
-  path: "../../obsidian-notes"
+  path: "../../../obsidian-notes"
   # Staging subdirectory inside vault.path (or an absolute path)
   staging_dir: "staging"
   # Above this note count, vault inventory automatically switches to top-K keyword ranking
