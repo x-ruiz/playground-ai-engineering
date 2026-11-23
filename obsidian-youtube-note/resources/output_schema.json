@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ObsidianYouTubeNoteResult",
+  "type": "object",
+  "required": [
+    "status",
+    "recommended_category",
+    "note_title",
+    "output_path",
+    "tags",
+    "existing_wikilinks",
+    "overlapping_notes",
+    "validation_passed",
+    "summary"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["created", "failed"]
+    },
+    "recommended_category": {
+      "type": "string",
+      "enum": [
+        "Cloud Infrastructure",
+        "Data Processing",
+        "Information Security",
+        "Software Engineering",
+        "System Resiliency",
+        "AI Engineering"
+      ]
+    },
+    "note_title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "output_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "existing_wikilinks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "overlapping_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "validation_passed": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,89 @@
+Title: Protocol Buffers Crash Course
+Channel: Backend Engineering Deep Dives
+URL: https://www.youtube.com/watch?v=protobuf-crash-course-fixture
+
+00:00
+Hey everyone, welcome back. Today we are doing a complete crash course on Protocol Buffers, commonly called Protobuf, created by Google for fast, compact, schema-first binary serialization.
+
+00:32
+Let's start with why Protobuf exists. Most teams default to JSON over REST because it is human-readable and easy to debug in curl or browser dev tools. That works fine for public web APIs, but when you have high-throughput internal microservices or data ingestion pipelines pushing millions of events per second, JSON gets expensive fast.
+
+01:15
+Why is JSON expensive? First, field names are repeated in every single payload. If you send an order event with keys like customer_id, order_total_cents, and created_at_epoch_ms across ten million messages, you are paying bandwidth and serialization CPU to send those same ASCII strings ten million times. Second, JSON has no built-in schema enforcement on the wire—numbers can arrive as strings, fields disappear silently, and there is no native distinction between int32, int64, float, and double. Third, parsing text into numbers and objects requires heavy string scanning and heap allocations.
+
+02:20
+Protocol Buffers solves this with three pillars: a strongly typed Interface Definition Language in .proto files, code generation via the protoc compiler for Java, Go, Python, C++, Rust, and more, and a compact binary wire format that replaces string field names with tiny numeric field tags.
+
+03:05
+Let's look at a real .proto file using proto3 syntax. Suppose we are modeling a table ingestion event in a data platform:
+
+syntax = "proto3";
+package dataplatform.events.v1;
+
+option java_package = "com.example.dataplatform.events";
+option java_multiple_files = true;
+
+enum CompressionCodec {
+  COMPRESSION_CODEC_UNSPECIFIED = 0;
+  COMPRESSION_CODEC_ZSTD = 1;
+  COMPRESSION_CODEC_SNAPPY = 2;
+  COMPRESSION_CODEC_GZIP = 3;
+}
+
+message TableCommitEvent {
+  string table_id = 1;
+  int64 snapshot_id = 2;
+  int64 record_count = 3;
+  CompressionCodec codec = 4;
+  repeated string partition_keys = 5;
+  map<string, string> properties = 6;
+}
+
+04:40
+Notice the numbers on the right: 1, 2, 3, 4, 5, 6. Beginners often think these are default values. They are NOT default values—they are unique field numbers, also called field tags. On the wire, Protobuf does not transmit "table_id" or "snapshot_id". It transmits the field number and the wire type packed into a single key byte!
+
+05:30
+Let's go under the hood of the binary wire format because understanding this is what separates junior usage from senior architecture. Every encoded field is a Tag-Length-Value or Tag-Value pair. The key is a varint computed as (field_number << 3) | wire_type. The lowest 3 bits hold the wire type:
+- Wire type 0: Varint (used for int32, int64, uint32, uint64, sint32, sint64, bool, enum)
+- Wire type 1: 64-bit fixed (fixed64, sfixed64, double)
+- Wire type 2: Length-delimited (string, bytes, embedded messages, packed repeated fields)
+- Wire type 5: 32-bit fixed (fixed32, sfixed32, float)
+
+06:45
+Varint encoding is super clever. Small integers take only 1 byte instead of 4 or 8 bytes. The most significant bit (MSB) of each byte is a continuation bit: 1 means more bytes follow, 0 means this is the final byte. The remaining 7 bits carry payload bits in little-endian order. That is why field numbers 1 through 15 only take 1 byte for the tag+wire_type key, whereas field numbers 16 through 2047 take 2 bytes. Pro tip: reserve field numbers 1 to 15 for your most frequently populated fields!
+
+07:50
+One huge gotcha with varints: negative numbers in standard int32 or int64 are encoded as two's complement 64-bit integers, so -1 takes a full 10 bytes! If a field frequently stores negative numbers, use sint32 or sint64, which apply ZigZag encoding (mapping -1 to 1, 1 to 2, -2 to 3, etc.) so small negative numbers fit in 1 byte.
+
+08:40
+Now let's talk about code generation with protoc. You run protoc --java_out=./src/main/java table_commit.proto, and it generates immutable Java classes with a fluent Builder pattern—TableCommitEvent.newBuilder().setTableId("orders").setSnapshotId(42L).build()—along with fast toByteArray() and parseFrom(byte[]) methods. Notice you never hand-write serialization boilerplate or reflection-based Jackson mappers.
+
+09:35
+And this ties directly into gRPC. In gRPC, you define service interfaces and RPC methods right inside the .proto file alongside your request and response messages, and protoc generates both strongly typed client stubs and server base classes over HTTP/2 with multiplexed streaming.
+
+10:20
+The real superpower of Protobuf in production is schema evolution—backwards and forwards compatibility. Suppose producer v2 adds a new field `string warehouse_uri = 7;`. An older consumer running v1 reads field tag 7, sees wire type 2 (length-delimited), reads the length prefix, safely skips those bytes without crashing, and keeps processing fields 1 through 6. Conversely, if a v2 consumer reads a message written by v1 where field 7 was absent, it cleanly gets the proto3 default value (empty string, 0, false, or empty list).
+
+11:40
+To keep schema evolution safe, there are strict golden rules every senior engineer enforces in code reviews and Buf lint checks:
+1. NEVER change the field number of an existing field. Renaming a field in .proto is safe on the wire (though it breaks generated source code and JSON mapping), but changing its number corrupts decoding.
+2. NEVER reuse a deleted field number or name. Mark deleted tags and names with the `reserved` keyword, like `reserved 4, 9 to 11; reserved "legacy_codec";`, so a future teammate cannot accidentally reuse tag 4 with an incompatible type and corrupt historical data in Kafka or object storage.
+3. Always define the enum value 0 as `<ENUM_NAME>_UNSPECIFIED = 0` because proto3 defaults unset enum fields to 0.
+4. Do not change a field's wire type incompatibly (for example, changing a string to an int64).
+5. In proto3, scalar fields default to zero values (0, "", false), so you cannot tell the difference between "unset" and "explicitly set to 0" unless you mark the field `optional` (which generates presence tracking via `hasField()`).
+
+13:30
+How does Protobuf compare to JSON, Apache Avro, and Apache Parquet?
+- Versus JSON: Protobuf is typically 3x to 10x smaller on the wire and significantly faster to serialize/deserialize with strong cross-language contracts, but it is NOT human-readable without the .proto schema and requires a build step (protoc / Buf).
+- Versus Apache Avro: Both are compact binary row formats. Avro uses schema-on-read with no field tags (smaller when schemas are stored in a Schema Registry and ideal for Hadoop/Kafka data lakes with dynamic schema resolution), whereas Protobuf embeds field tags per field, making self-contained forward/backward skipping simpler and pairing natively with gRPC microservices.
+- Versus Apache Parquet: Protobuf is row-oriented for RPCs and event streams; Parquet is columnar for analytical OLAP scans, predicate pushdown, and heavy compression across columns. In data platforms you often ingest events in Protobuf (or Avro) over Kafka and compact them into Parquet/Iceberg tables downstream.
+
+15:20
+When should you NOT use Protocol Buffers?
+1. Public browser-facing REST APIs where curl/DevTools readability and zero-tooling client onboarding matter more than marginal payload savings.
+2. Small, low-volume configuration files or quick prototypes where managing a .proto compilation pipeline and schema registry adds unnecessary build friction.
+3. Analytical batch storage at rest—never dump raw Protobuf blobs as your query layer when columnar formats like Parquet inside Apache Iceberg give you orders-of-magnitude faster column pruning and compression.
+4. Very large single messages (tens or hundreds of megabytes): Protobuf is designed for small messages (under ~1 MB); for huge payloads, chunk or stream them instead of building one giant in-memory protobuf object.
+
+16:40
+Quick governance tip for platform teams: pair Protobuf with Buf CLI in CI/CD to enforce breaking-change detection (`buf breaking`) and style linting (`buf lint`) automatically on every pull request. That turns schema compatibility from tribal knowledge into a compile-time gate.
