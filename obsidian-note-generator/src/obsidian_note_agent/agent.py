@@ -10,6 +10,7 @@ from google.adk.skills import load_skill_from_dir
 from google.adk.tools.skill_toolset import SkillToolset
 
 from obsidian_note_agent.config import AppConfig, load_config, resolve_skill_dir
+from obsidian_note_agent.models import build_resilient_model
 from obsidian_note_agent.tools.ingest_tools import (
     ingest_pasted_text_impl,
     ingest_url_impl,
@@ -164,7 +165,7 @@ def build_agent(
     obsidian_skill = load_skill_from_dir(skill_dir)
     skill_tools = SkillToolset(skills=[obsidian_skill])
 
-    model = model_override or resolved_config.agent.model
+    model = build_resilient_model(resolved_config, model_override=model_override)
     return LlmAgent(
         name="obsidian_note_agent",
         model=model,

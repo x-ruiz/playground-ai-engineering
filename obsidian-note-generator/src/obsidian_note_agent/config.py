@@ -62,8 +62,21 @@ class StateConfig(BaseModel):
         return value.upper() if isinstance(value, str) else value
 
 
+class RetryConfig(BaseModel):
+    attempts: int = Field(default=4, ge=1, le=10)
+    initial_delay: float = Field(default=2.0, gt=0.0, le=60.0)
+    max_delay: float = Field(default=30.0, gt=0.0, le=300.0)
+    exp_base: float = Field(default=2.0, ge=1.0, le=5.0)
+    jitter: float = Field(default=0.5, ge=0.0, le=1.0)
+    http_status_codes: list[int] = Field(default_factory=lambda: [429, 500, 503, 504])
+
+
 class AgentConfig(BaseModel):
     model: str = "gemini-2.5-flash"
+    fallback_models: list[str] = Field(
+        default_factory=lambda: ["gemini-2.5-flash-lite", "gemini-2.5-pro"]
+    )
+    retry: RetryConfig = Field(default_factory=RetryConfig)
     max_validation_retries: int = Field(default=2, ge=0, le=5)
     strict_validation_warnings: bool = True
 

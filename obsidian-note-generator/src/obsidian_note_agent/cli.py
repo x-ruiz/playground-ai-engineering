@@ -92,6 +92,13 @@ def _cmd_validate_config(args: argparse.Namespace) -> int:
     print(f"Config source:  {found if found else 'built-in defaults'}")
     print(f"Staging target: {config.staging_path}")
     print(f"Default model:  {config.agent.model}")
+    fallbacks = ", ".join(config.agent.fallback_models) if config.agent.fallback_models else "(none)"
+    print(f"Fallbacks:      {fallbacks}")
+    retry = config.agent.retry
+    print(
+        f"Retry policy:   {retry.attempts} attempts, {retry.initial_delay}s..{retry.max_delay}s "
+        f"(codes={retry.http_status_codes})"
+    )
     checks = validate_runtime_environment(config)
     has_failure = False
     for check in checks:

@@ -179,7 +179,8 @@ erDiagram
 | File | Role & Responsibilities |
 | :--- | :--- |
 | [__init__.py](./src/obsidian_note_agent/__init__.py) | Package entrypoint exposing `root_agent` and `build_agent` for `adk web` / `adk run` auto-discovery. |
-| [agent.py](./src/obsidian_note_agent/agent.py) | Builds the ADK `LlmAgent` (`root_agent`, default `gemini-2.5-flash`), wires the unified skill via `SkillToolset(skills=[load_skill_from_dir(...)])`, binds the 5 deterministic function tools, and holds the compact static system instruction. |
+| [agent.py](./src/obsidian_note_agent/agent.py) | Builds the ADK `LlmAgent` (`root_agent`, default `gemini-2.5-flash` via `ResilientGemini`), wires the unified skill via `SkillToolset(skills=[load_skill_from_dir(...)])`, binds the 5 deterministic function tools, and holds the compact static system instruction. |
+| [models.py](./src/obsidian_note_agent/models.py) | `ResilientGemini` subclass of ADK `Gemini` adding configurable exponential backoff (`HttpRetryOptions`) and ordered `fallback_models` failover on transient `429`/`500`/`503`/`504` (`UNAVAILABLE` / `RESOURCE_EXHAUSTED`) errors. |
 | [cli.py](./src/obsidian_note_agent/cli.py) | Thin CLI (`obsidian-note`) built on ADK `InMemoryRunner` providing `generate <url...>` (with `--dry-run`, `--output-dir`, `--force`, `--model`), `validate-config`, and `history`. |
 | [config.py](./src/obsidian_note_agent/config.py) | Pydantic configuration (`AppConfig`: `vault`, `state`, `agent`, `ingestion`), `.env` loader (`load_dotenv`), `config.yaml` discovery, skill directory resolution, and runtime environment checks (`validate_runtime_environment`). |
 | [state.py](./src/obsidian_note_agent/state.py) | SQLite WAL ledger (`note_runs` table) providing pre-LLM deduplication by `canonical_url` and `content_sha256`, plus run history tracking for both `create` and `update` actions. |
