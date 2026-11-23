@@ -11,7 +11,10 @@ build/
 .ruff_cache/
 .mypy_cache/
 
-# Local user configuration & runtime state
+# Local user configuration, secrets & runtime state
+.env
+.env.*
+!.env.example
 config.yaml
 *.db
 *.db-wal

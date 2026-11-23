@@ -1,0 +1,28 @@
+# Configuration for obsidian-note-agent (Google ADK)
+# Copy to config.yaml (gitignored) or ~/.config/obsidian-note-agent/config.yaml and customize.
+
+vault:
+  # Relative paths resolve against the directory containing this config file.
+  path: "../../obsidian-notes"
+  # Staging subdirectory inside vault.path (or an absolute path)
+  staging_dir: "staging"
+  # Above this note count, vault inventory automatically switches to top-K keyword ranking
+  inventory_rank_threshold: 150
+  inventory_top_k: 40
+
+state:
+  db_path: "~/.local/state/obsidian-note-agent/state.db"
+  log_level: "INFO"
+
+agent:
+  model: "gemini-2.5-flash"
+  max_validation_retries: 2
+  strict_validation_warnings: true
+
+ingestion:
+  # Cap source text sent to LLM to prevent accidental token spikes on multi-hour talks/docs
+  max_source_chars: 45000
+  http_timeout_seconds: 20.0
+  # Opt-in higher-token fallbacks (off by default to minimize token consumption)
+  enable_gemini_video_fallback: false
+  enable_url_context_fallback: false
