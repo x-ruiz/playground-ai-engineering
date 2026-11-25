@@ -12,6 +12,7 @@ build/
 .mypy_cache/
 
 # Local user configuration, secrets & runtime state
+.adk/
 .env
 .env.*
 !.env.example

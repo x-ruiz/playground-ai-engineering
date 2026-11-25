@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Cross-platform (macOS + Linux) symlink manager for all Antigravity skills in this repository.
 
-Auto-discovers every skill directory containing a `SKILL.md` file—both top-level
-`<repo_root>/<skill-name>/SKILL.md` and grouped project packages under
-`<repo_root>/<project>/skills/<skill-name>/SKILL.md`—and symlinks each into
-`~/.gemini/config/skills/<skill-name>` so Antigravity CLI (`agy`), IDE, and
-Desktop App discover all skills automatically.
+Auto-discovers every skill directory containing a `SKILL.md` file under `skills/`
+(e.g., `skills/<skill-name>/SKILL.md`)—and also supports nested `<dir>/skills/<skill-name>/SKILL.md`
+if pointed at a repository root—and symlinks each into `~/.gemini/config/skills/<skill-name>`
+so Antigravity CLI (`agy`), IDE, and Desktop App discover all skills automatically.
 """
 
 from __future__ import annotations
@@ -15,8 +14,12 @@ import sys
 from pathlib import Path
 
 
+def skills_root() -> Path:
+    return Path(__file__).resolve().parent
+
+
 def repo_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return skills_root().parent
 
 
 def default_target_skills_dir() -> Path:
@@ -177,8 +180,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--root",
         type=Path,
-        default=repo_root(),
-        help="Repository root directory containing <skill-name>/SKILL.md folders.",
+        default=skills_root(),
+        help="Skills root directory containing <skill-name>/SKILL.md folders (default: skills/).",
     )
     parser.add_argument(
         "--target-dir",

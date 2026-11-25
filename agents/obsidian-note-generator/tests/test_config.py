@@ -34,6 +34,12 @@ state:
   log_level: "debug"
 agent:
   model: "gemini-2.5-pro"
+  fallback_models: ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+  retry:
+    attempts: 6
+    initial_delay: 1.0
+    max_delay: 20.0
+    http_status_codes: [429, 503]
   max_validation_retries: 3
 ingestion:
   max_source_chars: 30000
@@ -51,6 +57,11 @@ ingestion:
     assert config.state.db_path == (tmp_path / "state" / "ledger.db").resolve()
     assert config.state.log_level == "DEBUG"
     assert config.agent.model == "gemini-2.5-pro"
+    assert config.agent.fallback_models == ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    assert config.agent.retry.attempts == 6
+    assert config.agent.retry.initial_delay == 1.0
+    assert config.agent.retry.max_delay == 20.0
+    assert config.agent.retry.http_status_codes == [429, 503]
     assert config.ingestion.max_source_chars == 30_000
     assert config.ingestion.enable_gemini_video_fallback is True
 

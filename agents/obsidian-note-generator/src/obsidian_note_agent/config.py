@@ -14,26 +14,32 @@ from pydantic import BaseModel, Field, field_validator
 
 
 def project_root() -> Path:
-    """Return the `obsidian-note-generator/` project root containing pyproject.toml and skills/."""
+    """Return the `agents/obsidian-note-generator/` project root containing pyproject.toml."""
     candidates: list[Path] = [
         *Path(__file__).resolve().parents[:4],
         Path(sys.prefix).resolve().parent,
         Path.cwd().resolve(),
-        (Path.cwd() / "obsidian-note-generator").resolve(),
+        (Path.cwd() / "agents" / "obsidian-note-generator").resolve(),
     ]
     for candidate in candidates:
         try:
             resolved = candidate.resolve()
         except OSError:
             continue
-        if (resolved / "pyproject.toml").is_file() and (resolved / "skills").is_dir():
+        if (resolved / "pyproject.toml").is_file() and (
+            resolved / "src" / "obsidian_note_agent"
+        ).is_dir():
             return resolved
     return Path(__file__).resolve().parents[2]
 
 
 def repo_root() -> Path:
-    """Return the parent multi-skill repository root."""
-    return project_root().parent
+    """Return the parent monorepo root containing `agents/` and `skills/`."""
+    proj = project_root()
+    for ancestor in (proj, *proj.parents):
+        if (ancestor / "skills").is_dir() and (ancestor / "agents").is_dir():
+            return ancestor
+    return proj.parent.parent
 
 
 def expand_and_resolve(raw: str | Path, *, base_dir: Path) -> Path:
@@ -46,7 +52,7 @@ def expand_and_resolve(raw: str | Path, *, base_dir: Path) -> Path:
 
 
 class VaultConfig(BaseModel):
-    path: Path = Field(default=Path("../../obsidian-notes"))
+    path: Path = Field(default=Path("../../../obsidian-notes"))
     staging_dir: Path = Field(default=Path("staging"))
     inventory_rank_threshold: int = Field(default=150, ge=10, le=5000)
     inventory_top_k: int = Field(default=40, ge=5, le=200)
@@ -62,8 +68,21 @@ class StateConfig(BaseModel):
         return value.upper() if isinstance(value, str) else value
 
 
+class RetryConfig(BaseModel):
+    attempts: int = Field(default=4, ge=1, le=10)
+    initial_delay: float = Field(default=2.0, gt=0.0, le=60.0)
+    max_delay: float = Field(default=30.0, gt=0.0, le=300.0)
+    exp_base: float = Field(default=2.0, ge=1.0, le=5.0)
+    jitter: float = Field(default=0.5, ge=0.0, le=1.0)
+    http_status_codes: list[int] = Field(default_factory=lambda: [429, 500, 503, 504])
+
+
 class AgentConfig(BaseModel):
     model: str = "gemini-2.5-flash"
+    fallback_models: list[str] = Field(
+        default_factory=lambda: ["gemini-2.5-flash-lite", "gemini-2.5-pro"]
+    )
+    retry: RetryConfig = Field(default_factory=RetryConfig)
     max_validation_retries: int = Field(default=2, ge=0, le=5)
     strict_validation_warnings: bool = True
 
@@ -99,13 +118,38 @@ class AppConfig(BaseModel):
         return AppConfig.model_validate(data)
 
 
-def load_project_env() -> Path | None:
-    """Load `.env` from CWD or project root if present (never overrides existing env vars)."""
+def load_project_env(explicit_env_file: Path | None = None) -> Path | None:
+    """Load `.env` from explicit path, CWD, or project root (never overrides existing env vars)."""
+    if explicit_env_file is not None:
+        resolved = explicit_env_file.expanduser().resolve()
+        if not resolved.is_file():
+            raise FileNotFoundError(f"Env file not found: {resolved}")
+        load_dotenv(resolved, override=False)
+        return resolved
+
     for candidate in (Path.cwd() / ".env", project_root() / ".env"):
         if candidate.is_file():
             load_dotenv(candidate, override=False)
             return candidate.resolve()
     return None
+
+
+def has_gemini_auth() -> bool:
+    """Return True if either Gemini Developer API or Vertex AI credentials are configured in env."""
+    use_vertex = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if use_vertex:
+        return bool(
+            os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip()
+            and os.environ.get("GOOGLE_CLOUD_LOCATION", "").strip()
+        )
+    return bool(
+        os.environ.get("GOOGLE_API_KEY", "").strip()
+        or os.environ.get("GEMINI_API_KEY", "").strip()
+    )
 
 
 def discover_config_file(explicit_path: Path | None = None) -> Path | None:
@@ -136,9 +180,13 @@ def discover_config_file(explicit_path: Path | None = None) -> Path | None:
     return None
 
 
-def load_config(config_path: Path | None = None) -> tuple[AppConfig, Path | None]:
+def load_config(
+    config_path: Path | None = None,
+    *,
+    env_file: Path | None = None,
+) -> tuple[AppConfig, Path | None]:
     """Load, validate, and resolve paths for AppConfig."""
-    load_project_env()
+    load_project_env(explicit_env_file=env_file)
     found = discover_config_file(config_path)
     if found is None:
         base_dir = project_root()
@@ -156,9 +204,10 @@ def load_config(config_path: Path | None = None) -> tuple[AppConfig, Path | None
 
 
 def resolve_skill_dir() -> Path | None:
-    """Resolve `skills/obsidian-note-generator/` containing SKILL.md, references/, and scripts/."""
+    """Resolve `<repo_root>/skills/obsidian-note-generator/` containing SKILL.md, references/, and scripts/."""
     candidates = (
-        project_root() / "skills" / "obsidian-note-generator",
+        repo_root() / "skills" / "obsidian-note-generator",
+        (Path.cwd() / "skills" / "obsidian-note-generator").resolve(),
         Path.home() / ".gemini" / "config" / "skills" / "obsidian-note-generator",
     )
     for candidate in candidates:
@@ -254,7 +303,7 @@ def validate_runtime_environment(config: AppConfig) -> list[EnvCheckResult]:
             EnvCheckResult(
                 "global_skill_install",
                 "warn",
-                f"Optional Antigravity symlink not installed at {global_skill}. Run 'python3 scripts/install_skill.py'.",
+                f"Optional Antigravity symlink not installed at {global_skill}. Run 'python3 skills/install_skills.py'.",
             )
         )
 

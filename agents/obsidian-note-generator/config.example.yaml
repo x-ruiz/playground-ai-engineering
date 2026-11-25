@@ -3,7 +3,7 @@
 
 vault:
   # Relative paths resolve against the directory containing this config file.
-  path: "../../obsidian-notes"
+  path: "../../../obsidian-notes"
   # Staging subdirectory inside vault.path (or an absolute path)
   staging_dir: "staging"
   # Above this note count, vault inventory automatically switches to top-K keyword ranking
@@ -15,7 +15,19 @@ state:
   log_level: "INFO"
 
 agent:
-  model: "gemini-2.5-flash"
+  model: "gemini-3.8-flash"
+  # Ordered fallback models tried automatically if primary exhausts retries on transient errors
+  fallback_models:
+    - "gemini-2.5-flash"
+    - "gemini-2.5-flash-lite"
+    - "gemini-2.5-pro"
+  retry:
+    attempts: 4
+    initial_delay: 2.0
+    max_delay: 30.0
+    exp_base: 2.0
+    jitter: 0.5
+    http_status_codes: [429, 500, 503, 504]
   max_validation_retries: 2
   strict_validation_warnings: true
 

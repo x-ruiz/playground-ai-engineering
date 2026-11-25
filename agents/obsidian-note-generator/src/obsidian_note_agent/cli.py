@@ -7,64 +7,16 @@ import asyncio
 import sys
 from pathlib import Path
 
-from google.adk.runners import InMemoryRunner
-from google.genai import types
-
 from obsidian_note_agent import __version__
-from obsidian_note_agent.agent import build_agent
 from obsidian_note_agent.config import load_config, validate_runtime_environment
+from obsidian_note_agent.runner import run_urls_async
 from obsidian_note_agent.state import StateStore
-
-
-async def _run_urls_async(
-    urls: list[str],
-    *,
-    config_path: Path | None,
-    dry_run: bool,
-    output_dir: Path | None,
-    force: bool,
-    model: str | None,
-) -> str:
-    config, _ = load_config(config_path)
-    agent = build_agent(
-        config,
-        dry_run=dry_run,
-        output_dir=output_dir,
-        force=force,
-        model_override=model,
-    )
-    runner = InMemoryRunner(agent=agent, app_name="obsidian_note_agent")
-    session = await runner.session_service.create_session(
-        app_name="obsidian_note_agent",
-        user_id="cli-user",
-    )
-
-    url_lines = "\n".join(f"- {u}" for u in urls)
-    force_clause = " Force regeneration even if already processed." if force else ""
-    prompt = (
-        f"Generate staged Obsidian note(s) or Update Draft(s) for the following URL(s):{force_clause}\n"
-        f"{url_lines}"
-    )
-
-    final_chunks: list[str] = []
-    async for event in runner.run_async(
-        user_id="cli-user",
-        session_id=session.id,
-        new_message=types.Content(role="user", parts=[types.Part.from_text(text=prompt)]),
-    ):
-        if event.is_final_response() and event.content and event.content.parts:
-            for part in event.content.parts:
-                if getattr(part, "text", None):
-                    final_chunks.append(part.text)
-
-    await runner.close()
-    return "\n".join(final_chunks).strip()
 
 
 def _cmd_generate(args: argparse.Namespace) -> int:
     try:
         output = asyncio.run(
-            _run_urls_async(
+            run_urls_async(
                 args.urls,
                 config_path=args.config,
                 dry_run=args.dry_run,
@@ -92,6 +44,13 @@ def _cmd_validate_config(args: argparse.Namespace) -> int:
     print(f"Config source:  {found if found else 'built-in defaults'}")
     print(f"Staging target: {config.staging_path}")
     print(f"Default model:  {config.agent.model}")
+    fallbacks = ", ".join(config.agent.fallback_models) if config.agent.fallback_models else "(none)"
+    print(f"Fallbacks:      {fallbacks}")
+    retry = config.agent.retry
+    print(
+        f"Retry policy:   {retry.attempts} attempts, {retry.initial_delay}s..{retry.max_delay}s "
+        f"(codes={retry.http_status_codes})"
+    )
     checks = validate_runtime_environment(config)
     has_failure = False
     for check in checks:
