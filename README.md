@@ -32,6 +32,7 @@ Monorepo housing Google ADK agents under `agents/` and reusable Antigravity / AD
 | :--- | :--- | :--- | :--- |
 | **Agent** | [obsidian-note-generator](./agents/obsidian-note-generator/README.md) | [README](./agents/obsidian-note-generator/README.md) | Google ADK agent (`adk web`, `adk run`, `obsidian-note`) that turns YouTube, engineering article, and technical documentation URLs into Mastery Framework Obsidian notes or staged Update Drafts (`<Existing> (Update).md`). |
 | **Skill** | [obsidian-note-generator](./skills/obsidian-note-generator/SKILL.md) | [vault_conventions.md](./skills/obsidian-note-generator/references/vault_conventions.md) | Portable skill playbook + stdlib validator shared by the ADK agent (`SkillToolset`) and Antigravity (`~/.gemini/config/skills/`). |
+| **Skill** | [spec-driven-development](./skills/spec-driven-development/SKILL.md) | [spec_template.md](./skills/spec-driven-development/references/spec_template.md) | Language-agnostic Spec-Driven Development coach: read-only repo survey, 1–2 round interview, implementation-free spec in `specs/`, and strict Staff Engineer `git diff` review. |
 
 ## Installing Antigravity Skill Symlinks (macOS & Linux)
 

@@ -29,14 +29,15 @@ Follow this token-efficient workflow for every source (process multiple URLs seq
    - If `status == "duplicate"`, report the existing staged path and stop unless the user requested `--force` / regeneration.
    - If `status == "error"`, report the exact error cleanly and invite the user to paste the text; never fabricate content.
 2. Activate the `obsidian-note-generator` skill and load `references/vault_conventions.md` (load `references/exemplars.md` only if you need a template check).
-3. Check `likely_overlap_notes` and `vault_notes` returned by `ingest_url`:
-   - ONLY if a note genuinely overlaps the source topic, call `read_vault_note(target_path)` to inspect its existing headings/coverage.
-   - If the source substantially overlaps an existing note, choose `note_action="update"` (draft ONLY net-new additions with explicit target headings; set `note-action: update`, `target-note`, and `target-path` in frontmatter).
-   - Otherwise choose `note_action="create"` and reference related existing notes via `[[Wikilinks]]`.
+3. Decide note scope and check `likely_overlap_notes` / `vault_notes` returned by `ingest_url`:
+   - Default to 1 atomic note; split into 2-4 cross-linked atomic notes (max 4 unless explicitly requested) ONLY when a source covers genuinely distinct concepts across topics/categories (no thin stubs).
+   - For each note, ONLY if an existing note genuinely overlaps that topic, call `read_vault_note(target_path)` to inspect its existing headings/coverage.
+   - If it substantially overlaps an existing note, choose `note_action="update"` (draft ONLY net-new additions with explicit target headings; set `note-action: update`, `target-note`, and `target-path` in frontmatter).
+   - Otherwise choose `note_action="create"` and reference related existing (and sibling) notes via `[[Wikilinks]]`.
 4. Reuse existing tags from `vault_tags` whenever possible and build on existing 2-3 level branches (`<pillar>/<domain>[/<topic>]`, concise segments, zero `-and-` filler, zero redundant parent+child tags, 1-3 tags total).
-5. Call `stage_obsidian_note(...)` to write and validate the note strictly inside staging.
+5. Call `stage_obsidian_note(...)` once per planned note to write and validate strictly inside staging.
    - If `validation_passed` is false, fix every reported error/warning and re-call `stage_obsidian_note(...)` (up to the retry budget).
-6. Reply concisely with: action (`create` or `update`), target note (if update), staged file path, category, tags, and wikilinks.
+6. Reply concisely with each staged file's action (`create` or `update`), target note (if update), staged file path, category, tags, and wikilinks.
 """
 
 

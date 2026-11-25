@@ -1,4 +1,4 @@
-"""Shared async ADK runner helpers used by both the CLI and the MCP server."""
+"""Shared async ADK runner helpers for obsidian_note_agent."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ async def run_pasted_text_async(
     output_dir: Path | None = None,
     force: bool = False,
     model: str | None = None,
-    user_id: str = "mcp-user",
+    user_id: str = "agent-user",
 ) -> str:
     """Run obsidian_note_agent end-to-end on pasted source text (e.g., paywalled articles)."""
     cleaned_text = text.strip()

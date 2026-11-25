@@ -181,9 +181,8 @@ erDiagram
 | [__init__.py](./src/obsidian_note_agent/__init__.py) | Package entrypoint exposing `root_agent` and `build_agent` for `adk web` / `adk run` auto-discovery. |
 | [agent.py](./src/obsidian_note_agent/agent.py) | Builds the ADK `LlmAgent` (`root_agent`, default `gemini-2.5-flash` via `ResilientGemini`), wires the unified skill via `SkillToolset(skills=[load_skill_from_dir(...)])`, binds the 5 deterministic function tools, and holds the compact static system instruction. |
 | [models.py](./src/obsidian_note_agent/models.py) | `ResilientGemini` subclass of ADK `Gemini` adding configurable exponential backoff (`HttpRetryOptions`) and ordered `fallback_models` failover on transient `429`/`500`/`503`/`504` (`UNAVAILABLE` / `RESOURCE_EXHAUSTED`) errors. |
-| [cli.py](./src/obsidian_note_agent/cli.py) | Thin CLI (`obsidian-note`) providing `generate <url...>` (with `--dry-run`, `--output-dir`, `--force`, `--model`), `validate-config`, `history`, and `mcp-config` (prints client snippets for `agy`, Claude, Cursor, and Codex). |
-| [runner.py](./src/obsidian_note_agent/runner.py) | Shared async ADK runner helpers (`run_urls_async`, `run_pasted_text_async`) reused by both `cli.py` and `mcp_server.py`. |
-| [mcp_server.py](./src/obsidian_note_agent/mcp_server.py) | Cross-client `FastMCP` server (`obsidian-note-mcp`, `stdio` + `streamable-http`) wrapping the ADK agent behind 3 thin tools (`generate_note_from_url`, `generate_note_from_text`, `list_recent_notes`) with stderr-only logging and `cwd="/"` safety. |
+| [cli.py](./src/obsidian_note_agent/cli.py) | Thin CLI (`obsidian-note`) built on ADK `InMemoryRunner` providing `generate <url...>` (with `--dry-run`, `--output-dir`, `--force`, `--model`), `validate-config`, and `history`. |
+| [runner.py](./src/obsidian_note_agent/runner.py) | Async ADK runner helpers (`run_urls_async`, `run_pasted_text_async`) used by `cli.py`. |
 | [config.py](./src/obsidian_note_agent/config.py) | Pydantic configuration (`AppConfig`: `vault`, `state`, `agent`, `ingestion`), `.env` loader (`load_dotenv`), `config.yaml` discovery, skill directory resolution, and runtime environment checks (`validate_runtime_environment`). |
 | [state.py](./src/obsidian_note_agent/state.py) | SQLite WAL ledger (`note_runs` table) providing pre-LLM deduplication by `canonical_url` and `content_sha256`, plus run history tracking for both `create` and `update` actions. |
 
@@ -271,22 +270,7 @@ obsidian-note history
 
 *(Tip: Without activating `.venv`, prefix commands with `.venv/bin/` or `uv run --no-sync`, or install globally via `uv tool install .`.)*
 
-### 4. Use via MCP (`agy` CLI, Antigravity Desktop, Claude Code, Cursor, Codex)
-Expose your ADK agent as a 3-tool MCP server (`generate_note_from_url`, `generate_note_from_text`, `list_recent_notes`) so any MCP client delegates note synthesis in a single call without dumping raw transcripts into your main chat context:
-
-```bash
-# Print ready-to-paste config snippets with your resolved local binary path
-obsidian-note mcp-config --client agy
-obsidian-note mcp-config --client claude
-obsidian-note mcp-config --client claude-desktop
-obsidian-note mcp-config --client cursor
-obsidian-note mcp-config --client codex
-
-# Optional: run over Streamable HTTP instead of stdio (localhost only)
-obsidian-note-mcp --transport streamable-http --host 127.0.0.1 --port 8765
-```
-
-### 5. Optional: Install Antigravity Skill Symlink
+### 4. Optional: Install Antigravity Skill Symlink
 To also use the exact same unified skill directly inside Antigravity chat, run from the repository root:
 
 ```bash
