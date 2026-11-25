@@ -1,6 +1,6 @@
 # Graduation Checklist: Extraction, Decoupling & Verification
 
-Load this reference during **Phase 1 (Audit)** and **Phases 3–6 (Execution)**.
+Load this reference during **Phase 1 (Audit)**, **Phase 2 (spec plan, §8.2)**, and **Phases 3–6 (Execution)**.
 
 ---
 
@@ -149,7 +149,7 @@ After publishing a graduated repo to GitHub, keep the owner's GitHub profile hom
 Surface only the items that apply to the graduated project:
 - **GCP Workload Identity Federation (WIF):** Update `github_repository` (e.g., in `infra/bootstrap/terraform.tfvars`) and apply bootstrap so the WIF `attribute_condition` and declaratively managed GitHub Actions repository variables bind to the new repo.
 - **GitHub Repository Settings:** Recreate required repository secrets (e.g., `*_PROMOTE_TOKEN`), Environments (`dev` / `uat` / `prod` approval reviewers), and branch protection rules on `main`.
-- **Skill / Tool Symlinks:** If a skill or CLI was symlinked from the playground (e.g., `~/.gemini/config/skills/<name>`), update the symlink target or reinstall from the new repo.
+- **Skill / Tool Symlinks:** If a skill or CLI was symlinked from the playground (e.g., `~/.gemini/config/skills/<name>` or `~/.claude/skills/<name>`), update the symlink target or reinstall from the new repo.
 - **Downstream References:** Update any sibling repos, Obsidian notes, or bookmarks that pointed to the old monorepo subdirectory URL.
 
 ---
@@ -169,3 +169,68 @@ When the user confirms pruning `<source_dir>` from the playground repo:
 ```
 
 3. Review `git status` and `git diff` in the playground repo and ask before committing/pushing.
+
+---
+
+## 8. Spec Migration & Renumbering (Phases 1, 2, 4, 5, 6)
+
+Specs follow the SDD convention `specs/NN_<snake_case>.md` (zero-padded, sequential; some directories start at `00`, others at `01`, so keep each directory's existing base). Specs reference each other by filename and by number ("see spec 03"), and code, READMEs, and CI comments may link to them too.
+
+### 8.1 Discover & Classify (Phase 1, read-only)
+
+```bash
+# All spec directories in the playground (excluding vendored/build dirs)
+find . -type d -name specs -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path '*/target/*'
+
+# Specs OUTSIDE <source_dir> that mention it, its package/module names, or its workflows
+grep -rlE '<source_dir>|<project_name>|<module_or_package_names>' $(find . -type d -name specs -not -path './<source_dir>/*') 2>/dev/null
+
+# Everything that links to any spec (to rewrite after moves/renumbers)
+grep -rnE 'specs/[0-9]{2}_|spec[ -]?#?[0-9]{2}\b' . --include='*.md' --include='*.y*ml' --include='*.py' --include='*.java' --include='*.ts' --include='*.hcl' --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.venv
+```
+
+Classify every spec into exactly one bucket in the Readiness Snapshot:
+
+| Bucket | Definition | Action |
+| :--- | :--- | :--- |
+| **Inside** | Already under `<source_dir>/specs/` | Moves with the extraction automatically |
+| **Relevant (outside)** | Lives in the playground root `specs/` or an ancestor/sibling `specs/` but is primarily about `<source_dir>` | Move into `<target_repo>/specs/` |
+| **Shared** | Cross-cutting (covers `<source_dir>` *and* other playground projects) | Keep in playground; **copy** into target only if the user asks, with a provenance note. Default: keep and link to it |
+| **Unrelated** | Does not concern `<source_dir>` | Stays, but may be renumbered during cleanup |
+
+When the bucket is ambiguous, list the spec under **Shared** and ask; never guess silently.
+
+### 8.2 Renumbering Plan (Phase 2, part of the approved plan)
+
+Present two old → new tables and get them approved with the rest of the Graduation Plan:
+
+1. **Target repo `specs/`:** merge *Inside* + *Relevant* specs into one sequence. Order by original spec number within a directory, then by first-commit date across directories (`git log --diff-filter=A --format=%as -- <spec> | tail -1`). Keep the base of `<source_dir>/specs/` (or `01` if it had none). Inside specs that already form a gap-free sequence keep their numbers; outside specs are appended after them in date order unless a dependency requires earlier placement.
+2. **Playground `specs/` (each affected directory):** after removing the moved specs, close the gaps by shifting the remaining specs down while preserving their relative order and the directory's base.
+
+```markdown
+| Old path | New path | Reason |
+| :--- | :--- | :--- |
+| specs/03_<name>.md | <target_repo>/specs/05_<name>.md | Relevant (outside) → moved |
+| specs/04_<other>.md | specs/03_<other>.md | Gap closed after move |
+```
+
+### 8.3 Execute in the Target Repo (Phase 4)
+
+1. Copy each *Relevant* spec into `<target_repo>/specs/` under its new number, and `git mv` any *Inside* specs whose numbers change. Do not touch `REQ-*` / `TC-*` identifiers—they are spec-local and must stay stable for traceability.
+2. Rewrite every reference inside `<target_repo>` (other specs, `README.md`, `docs/`, code comments, CI) from old filename/number to new, including playground-prefixed paths (`../specs/...`, `<source_dir>/specs/...`).
+3. Under the spec's header metadata, add a one-line provenance note for moved specs: `- **Migrated from:** <playground-repo>/specs/<old_filename> (YYYY-MM-DD)`.
+4. Commit separately: `docs(specs): migrate and renumber specs from <playground-repo>`.
+
+### 8.4 Verify (Phase 5)
+
+- `ls <target_repo>/specs` shows a contiguous sequence with no duplicate numbers.
+- No reference in `<target_repo>` to an old spec filename or a playground spec path.
+- All Markdown links to `specs/` resolve.
+
+### 8.5 Reorder the Playground Specs (Phase 6 cleanup, only after explicit confirmation)
+
+1. `git rm` the *Relevant* specs that moved (never the *Shared* ones).
+2. Renumber the remaining specs in each affected directory with `git mv`, so history follows the file. Process in **ascending** order when shifting down (e.g., `04→03` before `05→04`) to avoid collisions; if a collision is still possible, move through a temporary name first.
+3. Rewrite all playground references (other specs, READMEs, code, CI) to the new numbers/filenames; references to moved specs become links to the new repo: `https://github.com/<owner>/<new-repo-name>/blob/main/specs/<new_filename>`.
+4. Re-run the reference grep from 8.1: zero hits for removed or old filenames, and each `specs/` directory is contiguous.
+5. Include the spec changes in the cleanup diff shown to the user before committing (`docs(specs): remove graduated <source_dir> specs and renumber`).
