@@ -18,11 +18,17 @@ Monorepo housing Google ADK agents under `agents/` and reusable Antigravity / AD
 │       └── tests/
 ├── skills/
 │   ├── install_skills.py                      # Cross-platform symlink installer for all skills under skills/
-│   └── obsidian-note-generator/               # Unified skill (ADK SkillToolset + Antigravity)
+│   ├── graduate-playground-project/           # Graduate a playground subdirectory into a standalone repo
+│   │   ├── SKILL.md
+│   │   └── references/
+│   ├── obsidian-note-generator/               # Unified skill (ADK SkillToolset + Antigravity)
+│   │   ├── SKILL.md
+│   │   ├── references/vault_conventions.md    # Concise composable tags, create & update-draft schemas
+│   │   ├── references/exemplars.md
+│   │   └── scripts/validate_note.py
+│   └── spec-driven-development/               # Language-agnostic SDD coach & Staff diff review
 │       ├── SKILL.md
-│       ├── references/vault_conventions.md    # Concise composable tags, create & update-draft schemas
-│       ├── references/exemplars.md
-│       └── scripts/validate_note.py
+│       └── references/
 └── README.md
 ```
 
@@ -31,6 +37,7 @@ Monorepo housing Google ADK agents under `agents/` and reusable Antigravity / AD
 | Type | Name | Docs | Description |
 | :--- | :--- | :--- | :--- |
 | **Agent** | [obsidian-note-generator](./agents/obsidian-note-generator/README.md) | [README](./agents/obsidian-note-generator/README.md) | Google ADK agent (`adk web`, `adk run`, `obsidian-note`) that turns YouTube, engineering article, and technical documentation URLs into Mastery Framework Obsidian notes or staged Update Drafts (`<Existing> (Update).md`). |
+| **Skill** | [graduate-playground-project](./skills/graduate-playground-project/SKILL.md) | [graduation_checklist.md](./skills/graduate-playground-project/references/graduation_checklist.md) | End-to-end runbook for graduating a playground monorepo directory into a standalone repository: coupling/secret audit, `git subtree split` (or fresh init), CI/path decoupling, standalone `README.md` & `.gitignore`, local verification, optional `gh repo create`, and gated playground cleanup. |
 | **Skill** | [obsidian-note-generator](./skills/obsidian-note-generator/SKILL.md) | [vault_conventions.md](./skills/obsidian-note-generator/references/vault_conventions.md) | Portable skill playbook + stdlib validator shared by the ADK agent (`SkillToolset`) and Antigravity (`~/.gemini/config/skills/`). |
 | **Skill** | [spec-driven-development](./skills/spec-driven-development/SKILL.md) | [spec_template.md](./skills/spec-driven-development/references/spec_template.md) | Language-agnostic Spec-Driven Development coach: read-only repo survey, 1–2 round interview, implementation-free spec in `specs/`, and strict Staff Engineer `git diff` review. |
 
@@ -40,7 +47,7 @@ Monorepo housing Google ADK agents under `agents/` and reusable Antigravity / AD
 # List discovered skills and install status
 python3 skills/install_skills.py --list
 
-# Install all skills under skills/ into ~/.gemini/config/skills/
+# Install all skills under skills/ into ~/.gemini/config/skills/ (Antigravity) and ~/.claude/skills/ (Claude Code)
 python3 skills/install_skills.py --force
 
 # Verify installed symlinks
