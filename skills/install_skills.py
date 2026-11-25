@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Cross-platform (macOS + Linux) symlink manager for all Antigravity skills in this repository.
+"""Cross-platform (macOS + Linux) symlink manager for all agent skills in this repository.
 
 Auto-discovers every skill directory containing a `SKILL.md` file under `skills/`
 (e.g., `skills/<skill-name>/SKILL.md`)—and also supports nested `<dir>/skills/<skill-name>/SKILL.md`
-if pointed at a repository root—and symlinks each into `~/.gemini/config/skills/<skill-name>`
-so Antigravity CLI (`agy`), IDE, and Desktop App discover all skills automatically.
+if pointed at a repository root—and symlinks each into every target skills directory:
+
+- `~/.gemini/config/skills/<skill-name>` (Antigravity CLI `agy`, IDE, and Desktop App)
+- `~/.claude/skills/<skill-name>` (Claude Code)
+
+Pass `--target-dir` (repeatable) to override the default targets.
 """
 
 from __future__ import annotations
@@ -22,8 +26,12 @@ def repo_root() -> Path:
     return skills_root().parent
 
 
-def default_target_skills_dir() -> Path:
-    return Path.home() / ".gemini" / "config" / "skills"
+def default_target_skills_dirs() -> list[Path]:
+    home = Path.home()
+    return [
+        home / ".gemini" / "config" / "skills",  # Antigravity
+        home / ".claude" / "skills",  # Claude Code
+    ]
 
 
 def discover_skills(root: Path) -> list[Path]:
@@ -170,7 +178,7 @@ def list_skills(root: Path, target_dir: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Install, verify, or uninstall Antigravity skills from this repository."
+        description="Install, verify, or uninstall skills from this repository for Antigravity and Claude Code."
     )
     parser.add_argument(
         "skills",
@@ -185,9 +193,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--target-dir",
+        dest="target_dirs",
+        action="append",
         type=Path,
-        default=default_target_skills_dir(),
-        help="Global Antigravity skills directory (default: ~/.gemini/config/skills).",
+        default=None,
+        help=(
+            "Skills directory to install into; repeatable "
+            "(default: ~/.gemini/config/skills and ~/.claude/skills)."
+        ),
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--list", action="store_true", help="List discovered skills and status.")
@@ -201,10 +214,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = args.root.expanduser().resolve()
-    target_dir = args.target_dir.expanduser()
+    target_dirs = [d.expanduser() for d in (args.target_dirs or default_target_skills_dirs())]
 
     if args.list:
-        return list_skills(root, target_dir)
+        exit_code = 0
+        for target_dir in target_dirs:
+            print(f"{target_dir}:")
+            exit_code |= list_skills(root, target_dir)
+        return exit_code
 
     selected, missing = resolve_selected_skills(root, args.skills)
     if missing:
@@ -218,16 +235,17 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     exit_code = 0
-    for skill_dir in selected:
-        target = target_dir / skill_dir.name
-        if args.check:
-            rc = check_install(skill_dir, target)
-        elif args.uninstall:
-            rc = uninstall_skill(skill_dir.name, target)
-        else:
-            rc = install_skill(skill_dir, target, force=args.force)
-        if rc != 0:
-            exit_code = 1
+    for target_dir in target_dirs:
+        for skill_dir in selected:
+            target = target_dir / skill_dir.name
+            if args.check:
+                rc = check_install(skill_dir, target)
+            elif args.uninstall:
+                rc = uninstall_skill(skill_dir.name, target)
+            else:
+                rc = install_skill(skill_dir, target, force=args.force)
+            if rc != 0:
+                exit_code = 1
     return exit_code
 
 
