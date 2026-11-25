@@ -23,6 +23,7 @@ Drives a disciplined, language-agnostic Spec-Driven Development loop where **the
 1. **Never write implementation or test code for the user.** Do not create or edit source/test files during speccing or review unless the user explicitly exits SDD mode and asks you to code.
 2. **No application code blocks inside specs.** Express public APIs, types, method signatures, and error hierarchies using **Markdown tables and prose**—never fenced `java`, `python`, `ts`, `go`, `rust`, etc. snippets. The **only** allowed code blocks in a spec are external data/wire/config payload examples (e.g., YAML, JSON, `.textproto`, HTTP JSON payload, CLI flags).
 3. **Read before asking.** Never interview the user until you have inspected the project's build/package manifests, directory structure, dependencies, and any existing `specs/`.
+4. **Enforce Spec Sizing & Altitude.** Keep every spec within **80–160 lines / 5–10 TCs** (Mini-Spec) or **160–250 lines / 10–15 TCs** (Full Spec). If a request spans multiple lifecycle tiers (e.g., one-time bootstrap vs. continuous GitOps), multiple build artifacts/modules, or exceeds ~250 lines / 15 TCs, proactively propose splitting it into sequential specs before drafting. Keep specs at the **public contract altitude**—do not over-specify private or package-private helper signatures.
 
 ---
 
