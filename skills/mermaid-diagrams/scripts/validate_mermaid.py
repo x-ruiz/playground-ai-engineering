@@ -58,6 +58,16 @@ APPROVED_PALETTE: frozenset[str] = frozenset(
     }
 )
 
+DARK_CANVAS_SURFACES: frozenset[str] = frozenset(
+    {
+        "#09090B",
+        "#0F0F14",
+        "#111116",
+        "#16141F",
+        "#18181B",
+    }
+)
+
 UNIVERSAL_DIAGRAM_TYPES: tuple[str, ...] = (
     "flowchart",
     "sequenceDiagram",
@@ -264,16 +274,43 @@ def _validate_init_and_palette(
             theme = parsed.get("theme")
             if theme != "base":
                 report.add_error(
-                    f'%%{{init}}%% must set "theme": "base" (found {theme!r}) for dual-canvas predictability.'
+                    f'%%{{init}}%% must set "theme": "base" (found {theme!r}) for Obsidian Violet dark-mode theming.'
                 )
+            theme_css = parsed.get("themeCSS")
+            if not isinstance(theme_css, str) or "background-color" not in theme_css.lower():
+                report.add_error(
+                    '%%{init}%% must set "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }" '
+                    "so the diagram never renders on a white background."
+                )
+            elif re.search(r"background-color\s*:\s*(white|#fff(fff)?)\b", theme_css, re.IGNORECASE):
+                report.add_error("themeCSS must use a dark obsidian canvas background, never white.")
+
             theme_vars = parsed.get("themeVariables")
             if not isinstance(theme_vars, dict) or not theme_vars:
                 report.add_error('%%{init}%% is missing a populated "themeVariables" object.')
             else:
+                if theme_vars.get("darkMode") is not True:
+                    report.add_error(
+                        'themeVariables must set "darkMode": true so Mermaid derives dark-mode fills instead of light/white defaults.'
+                    )
+                bg = str(theme_vars.get("background", "")).upper()
+                if bg not in DARK_CANVAS_SURFACES:
+                    report.add_error(
+                        f'themeVariables "background" must be an Obsidian dark surface '
+                        f"({', '.join(sorted(DARK_CANVAS_SURFACES))}); found {theme_vars.get('background')!r}."
+                    )
+                if "mainBkg" not in theme_vars:
+                    report.add_warning(
+                        'themeVariables should set "mainBkg": "#18181B" so ER/class/state boxes never fall back to light fills.'
+                    )
+                if "textColor" not in theme_vars:
+                    report.add_warning(
+                        'themeVariables should set "textColor": "#F4F4F5" for high-contrast dark-mode typography.'
+                    )
                 if report.diagram_type in ("flowchart", "stateDiagram-v2", "erDiagram", "classDiagram"):
                     if "edgeLabelBackground" not in theme_vars:
                         report.add_warning(
-                            'themeVariables should set "edgeLabelBackground": "#18181B" for dual-canvas legibility.'
+                            'themeVariables should set "edgeLabelBackground": "#18181B" for crisp dark edge-label pills.'
                         )
 
     if not allow_custom_colors:

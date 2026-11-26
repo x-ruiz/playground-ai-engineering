@@ -9,7 +9,7 @@ Production-ready reference templates for all 5 universal Mermaid diagram archety
 Demonstrates trust zones, Control vs. Data Plane separation, explicit guardrails, sync/hot/async edge semantics, and 3-line Staff node labels.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "clusterBkg": "#0F0F14", "clusterBorder": "#52525B", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}, "flowchart": {"curve": "basis", "nodeSpacing": 42, "rankSpacing": 56, "padding": 14}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "clusterBkg": "#0F0F14", "clusterBorder": "#52525B", "titleColor": "#D8B4FE", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}, "flowchart": {"curve": "basis", "nodeSpacing": 42, "rankSpacing": 56, "padding": 14}}}%%
 flowchart TB
     subgraph ExternalZone["1. External Producers & Clients"]
         Producers(["Upstream Services\nHTTPS / gRPC Producers\nIdempotency-Key: UUIDv7"])
@@ -84,7 +84,7 @@ flowchart TB
 Demonstrates `autonumber`, `alt`/`opt` branching for deduplication and transient retries, activation bars, and dual-canvas legible purple/grey styling.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "actorBkg": "#18181B", "actorBorder": "#7C3AED", "actorTextColor": "#F4F4F5", "actorLineColor": "#52525B", "signalColor": "#8B5CF6", "signalTextColor": "#7C3AED", "labelBoxBkgColor": "#2E1065", "labelBoxBorderColor": "#A855F7", "labelTextColor": "#F5F3FF", "loopTextColor": "#8B5CF6", "noteBkgColor": "#1E1B2E", "noteBorderColor": "#6D28D9", "noteTextColor": "#EDE9FE", "activationBkgColor": "#4C1D95", "activationBorderColor": "#C084FC", "sequenceNumberColor": "#FAF5FF", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "actorBkg": "#18181B", "actorBorder": "#7C3AED", "actorTextColor": "#F4F4F5", "actorLineColor": "#52525B", "signalColor": "#A855F7", "signalTextColor": "#E4E4E7", "labelBoxBkgColor": "#2E1065", "labelBoxBorderColor": "#A855F7", "labelTextColor": "#F5F3FF", "loopTextColor": "#D8B4FE", "noteBkgColor": "#1E1B2E", "noteBorderColor": "#6D28D9", "noteTextColor": "#EDE9FE", "activationBkgColor": "#4C1D95", "activationBorderColor": "#C084FC", "sequenceNumberColor": "#FAF5FF", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 sequenceDiagram
     autonumber
     participant Client as Producer Client
@@ -127,7 +127,7 @@ sequenceDiagram
 Demonstrates explicit transition guards `[condition]`, retry budgets, quarantine/terminal states, and `classDef` tiering.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "transitionColor": "#8B5CF6", "transitionLabelColor": "#E4E4E7", "stateBkg": "#18181B", "stateLabelColor": "#F4F4F5", "compositeBackground": "#0F0F14", "compositeTitleBackground": "#2E1065", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "altBackground": "#16141F", "edgeLabelBackground": "#18181B", "labelBackgroundColor": "#18181B", "transitionColor": "#A855F7", "transitionLabelColor": "#E4E4E7", "stateBkg": "#18181B", "stateLabelColor": "#F4F4F5", "compositeBackground": "#0F0F14", "compositeTitleBackground": "#2E1065", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 stateDiagram-v2
     [*] --> Queued: Enqueue job (UUIDv7)
 
@@ -167,7 +167,7 @@ stateDiagram-v2
 Demonstrates clean cardinality, `PK`/`FK`/`UK` markers, and invariant comments on every non-obvious column.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#2E1065", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#18181B", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "attributeBackgroundColorOdd": "#18181B", "attributeBackgroundColorEven": "#0F0F14", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#2E1065", "primaryTextColor": "#F5F3FF", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#18181B", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "attributeBackgroundColorOdd": "#18181B", "attributeBackgroundColorEven": "#0F0F14", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 erDiagram
     TENANT ||--o{ PIPELINE_RUN : "owns (quota enforced)"
     PIPELINE_RUN ||--|{ OUTBOX_EVENT : "emits atomically in TX"
@@ -213,7 +213,7 @@ erDiagram
 Focuses on public contracts, composition, and failure/extension seams rather than noisy getter/setter boilerplate.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#2E1065", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "classText": "#F4F4F5", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#2E1065", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "classText": "#F4F4F5", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 classDiagram
     class EventSink {
         <<interface>>

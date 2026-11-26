@@ -50,14 +50,14 @@ Every foreground/background pair below exceeds **11:1 contrast (WCAG AAA)** and 
 
 ---
 
-## 2. Dual-Canvas Legibility Rule (GitHub Light + Dark + Obsidian)
+## 2. True Obsidian Dark Mode Enforcement (Never White Background)
 
-GitHub, Obsidian, VS Code, and Antigravity render diagrams on **both white (`#FFFFFF`) and near-black (`#0D1117` / `#09090B`) canvases** and often override or ignore outer SVG background fills. Follow these rules so diagrams never lose contrast:
+Mermaid's `base` theme defaults to `darkMode: false` and renders SVGs with a transparent background—causing light-mode hosts (such as GitHub Light Mode or web viewers) to show a stark white canvas and causing ER/class/state internals to derive light fills. Enforce dark mode with all four layers:
 
-1. **Always set explicit `fill`, `stroke`, and `color`** on every `classDef` and subgraph `style`.
-2. **Always set `"edgeLabelBackground": "#18181B"`** in `themeVariables` so edge labels render inside an opaque obsidian pill with bright `#F4F4F5` / `#E4E4E7` text.
-3. **Canvas-floating text** (such as `sequenceDiagram` arrow messages outside `box`/`rect` frames) must use mid-luminance violet (`#8B5CF6` or `#A855F7`)—never `#F4F4F5` (invisible on white) and never `#18181B` (invisible on dark). For `sequenceDiagram`, prefer `#8B5CF6` for `signalColor` and `#A855F7` or `#7C3AED` for `signalTextColor`, which retain strong readability on **both** light and dark canvases.
-4. **Never use `theme: "dark"`** as the base—always use `"theme": "base"` with explicit `themeVariables` so Mermaid does not auto-invert your carefully tuned colors.
+1. **Always set `"darkMode": true`** inside `themeVariables` so Mermaid's `base` color derivation engine computes dark-mode defaults across all diagram types (`flowchart`, `sequenceDiagram`, `stateDiagram-v2`, `erDiagram`, `classDiagram`).
+2. **Always set explicit dark base variables:** `"background": "#09090B"`, `"mainBkg": "#18181B"`, `"textColor": "#F4F4F5"`, and `"edgeLabelBackground": "#18181B"`.
+3. **Always force a dark SVG canvas via `themeCSS`:** `"themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }"` so the diagram always renders on a pitch obsidian dark card instead of bleeding through a white page background.
+4. **Always set explicit `fill`, `stroke`, and `color`** on every `classDef` and subgraph `style`, and keep `"theme": "base"` (never `"theme": "default"` or `"theme": "neutral"`).
 
 ---
 
@@ -100,31 +100,31 @@ style ExternalZone fill:#18181B,stroke:#52525B,stroke-width:1.25px,stroke-dashar
 
 ## 4. Copy-Ready `%%{init}%%` Directives (Valid Double-Quoted JSON)
 
-Always place `%%{init: ...}%%` on **line 1** of the Mermaid block using strict double-quoted JSON.
+Always place `%%{init: ...}%%` on **line 1** of the Mermaid block using strict double-quoted JSON with `"darkMode": true` and obsidian `themeCSS`.
 
 ### A. `flowchart` (`TB` or `LR`)
 ```text
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "clusterBkg": "#0F0F14", "clusterBorder": "#52525B", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}, "flowchart": {"curve": "basis", "nodeSpacing": 42, "rankSpacing": 56, "padding": 14}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "clusterBkg": "#0F0F14", "clusterBorder": "#52525B", "titleColor": "#D8B4FE", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}, "flowchart": {"curve": "basis", "nodeSpacing": 42, "rankSpacing": 56, "padding": 14}}}%%
 ```
 
 ### B. `sequenceDiagram`
 ```text
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "actorBkg": "#18181B", "actorBorder": "#7C3AED", "actorTextColor": "#F4F4F5", "actorLineColor": "#52525B", "signalColor": "#8B5CF6", "signalTextColor": "#7C3AED", "labelBoxBkgColor": "#2E1065", "labelBoxBorderColor": "#A855F7", "labelTextColor": "#F5F3FF", "loopTextColor": "#8B5CF6", "noteBkgColor": "#1E1B2E", "noteBorderColor": "#6D28D9", "noteTextColor": "#EDE9FE", "activationBkgColor": "#4C1D95", "activationBorderColor": "#C084FC", "sequenceNumberColor": "#FAF5FF", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "actorBkg": "#18181B", "actorBorder": "#7C3AED", "actorTextColor": "#F4F4F5", "actorLineColor": "#52525B", "signalColor": "#A855F7", "signalTextColor": "#E4E4E7", "labelBoxBkgColor": "#2E1065", "labelBoxBorderColor": "#A855F7", "labelTextColor": "#F5F3FF", "loopTextColor": "#D8B4FE", "noteBkgColor": "#1E1B2E", "noteBorderColor": "#6D28D9", "noteTextColor": "#EDE9FE", "activationBkgColor": "#4C1D95", "activationBorderColor": "#C084FC", "sequenceNumberColor": "#FAF5FF", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 ```
 
 ### C. `stateDiagram-v2`
 ```text
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "transitionColor": "#8B5CF6", "transitionLabelColor": "#E4E4E7", "stateBkg": "#18181B", "stateLabelColor": "#F4F4F5", "compositeBackground": "#0F0F14", "compositeTitleBackground": "#2E1065", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "altBackground": "#16141F", "edgeLabelBackground": "#18181B", "labelBackgroundColor": "#18181B", "transitionColor": "#A855F7", "transitionLabelColor": "#E4E4E7", "stateBkg": "#18181B", "stateLabelColor": "#F4F4F5", "compositeBackground": "#0F0F14", "compositeTitleBackground": "#2E1065", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 ```
 
 ### D. `erDiagram`
 ```text
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#2E1065", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#18181B", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "attributeBackgroundColorOdd": "#18181B", "attributeBackgroundColorEven": "#0F0F14", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#2E1065", "primaryTextColor": "#F5F3FF", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#18181B", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "attributeBackgroundColorOdd": "#18181B", "attributeBackgroundColorEven": "#0F0F14", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 ```
 
 ### E. `classDiagram`
 ```text
-%%{init: {"theme": "base", "themeVariables": {"background": "#09090B", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#8B5CF6", "secondaryColor": "#2E1065", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "classText": "#F4F4F5", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#2E1065", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "classText": "#F4F4F5", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 ```
 
 ---
