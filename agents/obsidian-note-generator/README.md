@@ -21,51 +21,71 @@ Zero browser extensions and zero background filesystem watchers required.
 ## 2. System Architecture
 
 ```mermaid
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "clusterBkg": "#0F0F14", "clusterBorder": "#52525B", "titleColor": "#D8B4FE", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}, "flowchart": {"curve": "basis", "nodeSpacing": 42, "rankSpacing": 56, "padding": 14}}}%%
 flowchart TB
     subgraph Entry["1. User Interfaces (No Background Listener)"]
-        Web["adk web\n(Browser Chat + Trace UI)"]
-        Term["adk run\n(Interactive Terminal Chat)"]
-        CLI["obsidian-note generate <url...>\n(One-Shot / Batch CLI)"]
+        Web(["adk web\nBrowser Chat + Trace UI"])
+        Term(["adk run\nInteractive Terminal Chat"])
+        CLI(["obsidian-note generate\nOne-Shot / Batch CLI"])
     end
 
     subgraph ADK["2. Google ADK Agent (obsidian_note_agent)"]
-        Root["root_agent (LlmAgent)\n2-Turn Synthesize / Update-Draft Loop"]
-        Skill["SkillToolset (1 Lean Unified Skill)\nskills/obsidian-note-generator"]
-        Ingest["ingest_url(url, force)\nNormalize + Dedup + Classify + Fetch\n+ Live Tags + Vault Inventory + Overlaps"]
-        ReadTool["read_vault_note(target_path)\n(Called ONLY on overlap candidates)"]
-        StageTool["stage_obsidian_note(...)\nPath Guard + validate_note.py + Ledger"]
-        HistTool["list_recent_notes(limit)"]
+        Root["root_agent · ADK LlmAgent\n2-Turn Synthesize / Update Loop\ngemini-2.5-flash + ResilientGemini"]
+        Skill["SkillToolset · 1 Unified Skill\nskills/obsidian-note-generator"]
+        Ingest["ingest_url · url, force\nNormalize · Dedup · Classify · Fetch\nLive Tags · Inventory · Overlaps"]
+        ReadTool["read_vault_note · target_path\nRead-Only · 16k-Char Cap\nCalled Only on Overlaps"]
+        StageTool["stage_obsidian_note\nPath Guard · validate_note.py\nSQLite Ledger Commit"]
+        HistTool["list_recent_notes · limit\nRecent Run History"]
 
-        Root <--> Skill
-        Root <--> Ingest
-        Root <--> ReadTool
-        Root <--> StageTool
-        Root <--> HistTool
+        Root <-->|"skill instructions"| Skill
+        Root <-->|"Turn 1: compound ingest"| Ingest
+        Root <-->|"conditional read"| ReadTool
+        Root <-->|"Turn 2: guarded stage"| StageTool
+        Root -.->|"history query"| HistTool
     end
 
     subgraph Fetchers["3. Deterministic Ingestion & State"]
-        YT["fetchers/youtube.py\nyoutube-transcript-api + oEmbed\n(+ opt-in Gemini video fallback)"]
-        WebFetch["fetchers/web.py\nhttpx + trafilatura Markdown/metadata\n(+ opt-in Gemini url_context fallback)"]
-        State[("state.py\nSQLite WAL Ledger\n(URL + SHA-256 dedup)")]
+        YT["fetchers/youtube.py\nyoutube-transcript-api + oEmbed\nOpt-in Gemini Video Fallback"]
+        WebFetch["fetchers/web.py\nhttpx + trafilatura Markdown\nOpt-in Gemini url_context"]
+        State[("state.py\nSQLite WAL Ledger\nURL + SHA-256 Dedup")]
     end
 
     subgraph Vault["4. Obsidian Vault (../obsidian-notes)"]
-        Existing["Production + Staged Notes\n(Read-Only Scan: Titles, Aliases, Tags)"]
-        NewNote["staging/<Category>/<Note Title>.md\n(note-action: create)"]
-        UpdateDraft["staging/<Category>/<Existing> (Update).md\n(note-action: update)"]
-        Validator["skills/obsidian-note-generator/scripts/validate_note.py\n(Tags, Depth, Update-Draft & Hygiene Checks)"]
+        Existing[("Production + Staged Notes\nRead-Only Scan\nTitles · Aliases · Live Tags")]
+        NewNote[("staging/<Category>/<Title>.md\nnote-action: create")]
+        UpdateDraft[("Staged Update Draft\nstaging/<Category>/...Update.md\nnote-action: update")]
+        Validator["validate_note.py --strict-warnings\nTags · Depth · Update-Draft\nMarkdown Hygiene Gate"]
     end
 
-    Entry --> Root
-    Ingest --> YT
-    Ingest --> WebFetch
-    Ingest <--> State
-    Ingest -->|"Read-only scan"| Existing
-    ReadTool -->|"On overlap only"| Existing
-    StageTool -->|"New topic"| NewNote
-    StageTool -->|"Overlapping topic"| UpdateDraft
-    StageTool -->|"Strict validation"| Validator
-    StageTool -->|"Record run"| State
+    Entry ==>|"URL(s) or pasted text"| Root
+    Ingest -->|"YouTube URL"| YT
+    Ingest -->|"Article / Docs URL"| WebFetch
+    Ingest <-->|"dedup lookup"| State
+    Ingest -->|"read-only scan"| Existing
+    ReadTool -.->|"on overlap only"| Existing
+    StageTool ==>|"new topic"| NewNote
+    StageTool ==>|"overlapping topic"| UpdateDraft
+    StageTool -->|"strict validation"| Validator
+    StageTool -.->|"record completed run"| State
+
+    classDef core fill:#2E1065,stroke:#A855F7,stroke-width:2px,color:#F5F3FF
+    classDef service fill:#18181B,stroke:#7C3AED,stroke-width:1.5px,color:#F4F4F5
+    classDef store fill:#09090B,stroke:#C084FC,stroke-width:1.5px,color:#EDE9FE
+    classDef external fill:#27272A,stroke:#71717A,stroke-width:1.5px,color:#E4E4E7
+    classDef async fill:#1E1B2E,stroke:#6B7280,stroke-width:1.25px,stroke-dasharray:4 3,color:#D4D4D8
+    classDef guard fill:#3B0764,stroke:#E879F9,stroke-width:2px,stroke-dasharray:5 3,color:#FAF5FF
+
+    class Web,Term,CLI external
+    class Root core
+    class Ingest,ReadTool,YT,WebFetch service
+    class Skill,HistTool async
+    class StageTool,Validator guard
+    class State,Existing,NewNote,UpdateDraft store
+
+    style Entry fill:#18181B,stroke:#52525B,stroke-width:1.25px,stroke-dasharray:5 4,color:#A1A1AA
+    style ADK fill:#0F0F14,stroke:#52525B,stroke-width:1.5px,color:#D8B4FE
+    style Fetchers fill:#16141F,stroke:#6D28D9,stroke-width:1.25px,stroke-dasharray:4 3,color:#C4B5FD
+    style Vault fill:#0F0F14,stroke:#52525B,stroke-width:1.5px,color:#D8B4FE
 ```
 
 ---
@@ -73,6 +93,7 @@ flowchart TB
 ## 3. End-to-End Request Flow
 
 ```mermaid
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "actorBkg": "#18181B", "actorBorder": "#7C3AED", "actorTextColor": "#F4F4F5", "actorLineColor": "#52525B", "signalColor": "#A855F7", "signalTextColor": "#E4E4E7", "labelBoxBkgColor": "#2E1065", "labelBoxBorderColor": "#A855F7", "labelTextColor": "#F5F3FF", "loopTextColor": "#D8B4FE", "noteBkgColor": "#1E1B2E", "noteBorderColor": "#6D28D9", "noteTextColor": "#EDE9FE", "activationBkgColor": "#4C1D95", "activationBorderColor": "#C084FC", "sequenceNumberColor": "#FAF5FF", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 sequenceDiagram
     autonumber
     participant User as User (adk web / adk run / CLI)
@@ -82,8 +103,8 @@ sequenceDiagram
     participant Vault as ../obsidian-notes
     participant Stage as stage_obsidian_note + validate_note.py
 
-    User->>Agent: Provide URL(s) (YouTube, article, docs) or pasted text
-    Agent->>Ingest: ingest_url(url, force=false)
+    User->>+Agent: Provide URL(s) (YouTube, article, docs) or pasted text
+    Agent->>+Ingest: ingest_url(url, force=false)
     Ingest->>Ingest: Canonicalize URL & classify (youtube | article | documentation)
     Ingest->>DB: get_completed_by_url(canonical_url)
 
@@ -94,14 +115,14 @@ sequenceDiagram
     else New source
         Ingest->>Ingest: Fetch & clean (youtube-transcript-api / trafilatura) + cap chars + SHA-256
         Ingest->>Vault: scan_vault_state() (prod + staging titles, aliases, live tags, overlap hints)
-        Ingest-->>Agent: Compound payload (content + provenance + vault_tags + vault_notes + likely_overlap_notes)
+        Ingest-->>-Agent: Compound payload (content + provenance + vault_tags + vault_notes + likely_overlap_notes)
 
         opt likely_overlap_notes is non-empty
             Agent->>Vault: read_vault_note(target_path) (strictly read-only)
             Vault-->>Agent: Existing headings & content (capped)
         end
 
-        Agent->>Stage: stage_obsidian_note(category, note_title, markdown, source_type, note_action)
+        Agent->>+Stage: stage_obsidian_note(category, note_title, markdown, source_type, note_action)
         Stage->>Stage: Enforce path inside staging/<Category>/ + auto-suffix " (Update)" if update
         Stage->>Vault: Write draft & run validate_note.py --strict-warnings
 
@@ -112,8 +133,8 @@ sequenceDiagram
         end
 
         Stage->>DB: record_completed(url, sha256, action, target_note, output_path, tags)
-        Stage-->>Agent: status="staged", validation_passed=true, output_path
-        Agent-->>User: Concise summary (create/update, path, category, tags, wikilinks)
+        Stage-->>-Agent: status="staged", validation_passed=true, output_path
+        Agent-->>-User: Concise summary (create/update, path, category, tags, wikilinks)
     end
 ```
 
@@ -122,6 +143,7 @@ sequenceDiagram
 ## 4. Data & State Model
 
 ```mermaid
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#2E1065", "primaryTextColor": "#F5F3FF", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#18181B", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "attributeBackgroundColorOdd": "#18181B", "attributeBackgroundColorEven": "#0F0F14", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}}}%%
 erDiagram
     FETCHED_SOURCE ||--|| VAULT_SNAPSHOT : "paired inside ingest_url()"
     FETCHED_SOURCE ||--o{ NOTE_RUNS : "deduplicated by canonical_url & content_sha256"

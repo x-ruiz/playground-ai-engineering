@@ -27,9 +27,18 @@ Load this reference during **Phase 4** when authoring or maturing the graduated 
 <!-- Keep Mermaid diagrams clean (flowchart TD/LR, sequenceDiagram, or erDiagram) with quoted labels when using parentheses/brackets. -->
 
 ```mermaid
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "clusterBkg": "#0F0F14", "clusterBorder": "#52525B", "titleColor": "#D8B4FE", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}, "flowchart": {"curve": "basis", "nodeSpacing": 42, "rankSpacing": 56, "padding": 14}}}%%
 flowchart LR
-    A["Input / Trigger"] --> B["Core Engine"]
-    B --> C["Output / Target"]
+    A(["Input / Trigger\nCLI · Event · HTTP"]) ==>|"validated payload"| B["Core Engine\nRuntime · Domain Logic\nKey Invariant"]
+    B ==>|"write / emit"| C[("Output / Target\nStore · Sink · API")]
+
+    classDef core fill:#2E1065,stroke:#A855F7,stroke-width:2px,color:#F5F3FF
+    classDef store fill:#09090B,stroke:#C084FC,stroke-width:1.5px,color:#EDE9FE
+    classDef external fill:#27272A,stroke:#71717A,stroke-width:1.5px,color:#E4E4E7
+
+    class A external
+    class B core
+    class C store
 ```
 
 ## Repository Layout

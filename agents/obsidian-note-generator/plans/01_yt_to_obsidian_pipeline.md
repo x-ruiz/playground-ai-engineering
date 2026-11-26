@@ -5,14 +5,48 @@
 Build a standalone, cross-platform (macOS + Linux) event-driven pipeline in this repository (`yt-to-obsidian`) that watches `~/Downloads` for manually downloaded YouTube transcripts and invokes a headless Antigravity agent (`agy -p`) paired with a dedicated Antigravity Skill to produce structured Obsidian notes staged for human review in `../obsidian-notes`.
 
 ```mermaid
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #09090B !important; border-radius: 8px; }", "themeVariables": {"darkMode": true, "background": "#09090B", "mainBkg": "#18181B", "textColor": "#F4F4F5", "primaryColor": "#18181B", "primaryTextColor": "#F4F4F5", "primaryBorderColor": "#7C3AED", "lineColor": "#A855F7", "secondaryColor": "#16141F", "tertiaryColor": "#0F0F14", "edgeLabelBackground": "#18181B", "clusterBkg": "#0F0F14", "clusterBorder": "#52525B", "titleColor": "#D8B4FE", "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif", "fontSize": "13px"}, "flowchart": {"curve": "basis", "nodeSpacing": 42, "rankSpacing": 56, "padding": 14}}}%%
 flowchart LR
-    A["Human downloads YT transcript\n(Browser Extension)"] --> B["~/Downloads\ne.g. Protocol_Buffers_Crash_Course_transcript"]
-    B -->|"OS FS Event\n(FSEvents on macOS /\ninotify on Linux)"| C["Python Watcher Daemon\n(watchdog)"]
-    C -->|"Pattern Filter + Debounce\n+ SHA-256 Dedup Queue"| D["Headless Agent Runner\n(agy -p CLI)"]
-    D -->|"Loads Skill"| E["Skill: obsidian-youtube-note\n(SKILL.md + conventions + examples)"]
-    D -->|"Reads vault for\nexisting notes & wikilinks"| F["Obsidian Vault\n../obsidian-notes"]
-    D -->|"Writes staged note"| G["../obsidian-notes/staging/\n<Recommended Category>/<Title>.md"]
-    C -->|"Records status & logs"| H["Local State Ledger\n& Rotating Logs"]
+    subgraph InputZone["1. Transcript Source"]
+        A(["Human Downloads YT Transcript\nBrowser Extension"])
+        B[("~/Downloads\n*_transcript · ext optional\nWrite-Stable File")]
+    end
+
+    subgraph DaemonZone["2. Event-Driven Watcher & Runner"]
+        C["Python Watcher Daemon\nwatchdog · FSEvents / inotify\nFilter · Debounce · SHA-256 Queue"]
+        D["Headless Agent Runner\nagy -p CLI · AgentRunner\nSingle Sequential Worker"]
+        E["Skill: obsidian-youtube-note\nSKILL.md + Conventions\n+ Golden Examples"]
+        H[("Local State Ledger\nSQLite/JSON SHA-256 Dedup\n& Rotating Logs")]
+    end
+
+    subgraph VaultZone["3. Obsidian Vault (../obsidian-notes)"]
+        F[("Obsidian Vault\n../obsidian-notes\nRead-Only Context Scan")]
+        G[("Staged Note Output\nstaging/<Category>/<Title>.md\nHuman Review Queue")]
+    end
+
+    A ==>|"save transcript"| B
+    B ==>|"OS FS Event\n(FSEvents / inotify)"| C
+    C ==>|"normalized text\n+ deduped job"| D
+    D <-->|"loads playbook"| E
+    D -->|"reads notes & wikilinks"| F
+    D ==>|"writes staged note"| G
+    C -.->|"records status & logs"| H
+
+    classDef core fill:#2E1065,stroke:#A855F7,stroke-width:2px,color:#F5F3FF
+    classDef service fill:#18181B,stroke:#7C3AED,stroke-width:1.5px,color:#F4F4F5
+    classDef store fill:#09090B,stroke:#C084FC,stroke-width:1.5px,color:#EDE9FE
+    classDef external fill:#27272A,stroke:#71717A,stroke-width:1.5px,color:#E4E4E7
+    classDef async fill:#1E1B2E,stroke:#6B7280,stroke-width:1.25px,stroke-dasharray:4 3,color:#D4D4D8
+
+    class A external
+    class D core
+    class C service
+    class E async
+    class B,F,G,H store
+
+    style InputZone fill:#18181B,stroke:#52525B,stroke-width:1.25px,stroke-dasharray:5 4,color:#A1A1AA
+    style DaemonZone fill:#16141F,stroke:#6D28D9,stroke-width:1.25px,stroke-dasharray:4 3,color:#C4B5FD
+    style VaultZone fill:#0F0F14,stroke:#52525B,stroke-width:1.5px,color:#D8B4FE
 ```
 
 ---
